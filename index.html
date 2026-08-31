@@ -4,6 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DocTrack | ระบบกำกับติดตามสถานะหนังสือ คณะวิศวกรรมศาสตร์ มมส.</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
  :root{--nv:#0f2d5c;--bl:#1d4ed8}
@@ -14,6 +15,11 @@
  thead th{position:sticky;top:0;background:#f1f5f9;z-index:1}
  ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#c7d2e5;border-radius:9px}
  @media print{.noprint{display:none!important}body{background:#fff}}
+ .track-mode .full-dash{display:none!important}
+ #coverSheet{display:none}
+ body.printing-cover>*:not(#coverSheet){display:none!important}
+ body.printing-cover #coverSheet{display:block!important}
+ @media print{ #coverSheet .qrbox svg,#coverSheet .qrbox img{margin:0 auto} }
 </style>
 </head>
 <body>
@@ -27,27 +33,27 @@ const slaOf = s => 3;
 /* 5 ขั้นตอนการเสนอหนังสือ */
 const STAGES=[{c:'ผู้รับ',i:'📥'},{c:'หัวหน้ากลุ่มงาน',i:'👤'},{c:'หัวหน้าสำนักงานเลขาคณบดี',i:'🗂'},
  {c:'ผู้บริหาร',i:'🧑‍💼'},{c:'คณบดี',i:'🎓'}];
-/* ข้อมูลสำรอง (ตรงกับชีตปัจจุบัน) ใช้เมื่อดึงออนไลน์ไม่ได้ */
+/* ข้อมูลสำรอง (ตรงกับชีตปัจจุบัน) ใช้เมื่อดึงออนไลน์ไม่ได้ — คอลัมน์สุดท้าย = ชื่อผู้รับเรื่อง */
 const FALLBACK=[
-["9/11/2025","001","รับเรื่อง","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายบุคคล","คณบดี","สำเร็จ","ภายใน","9/11/2025"],
-["10/11/2025","002","ขอซื้อ","ธุรการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิจัย","คณบดี","สำเร็จ","ภายใน","10/11/2025"],
-["11/11/2025","003","ลากิจ","บุคคล","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิชาการการศึกษา","คณบดี","แก้ไข","ภายใน",""],
-["12/11/2025","004","เดินทางไปราชการ","ธุรการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายแผนและงบประมาณ","รักษาการคณบดี","สำเร็จ","ภายใน","12/11/2025"],
-["13/11/2025","005","ขอความอนุเคราะห์","ธุรการ","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","รักษาการคณบดี","สำเร็จ","ภายนอก","13/11/2025"],
-["14/11/2025","006","โครงการ","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.งานโครงสร้างพื้นฐาน","รักษาการคณบดี","ยกเลิก","ภายนอก","14/11/2025"],
-["15/11/2025","007","กิจกรรม","บุคคล","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.เทคโนโลยีสารสนเทศ","คณบดี","ยกเลิก","ภายใน","15/11/2025"],
-["17/11/2025","008","บันทึกข้อความ","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","","ดำเนินการ","ภายใน",""],
-["18/11/2025","009","วิจัย","ธุรการ","วิจัย","หัวหน้าสำนักงานเลขาคณบดี","","","ดำเนินการ","ภายใน",""],
-["18/11/2025","010","วิชาการ","บุคคล","วิจัย","","","","ดำเนินการ","ภายใน",""],
-["18/11/2025","011","การเงิน","บุคคล","","","","","ดำเนินการ","ภายใน",""],
-["18/11/2025","012","ขออนุมัติ","ธุรการ","","","","","ดำเนินการ","ภายนอก",""]];
+["9/11/2025","001","รับเรื่อง","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายบุคคล","คณบดี","สำเร็จ","ภายใน","9/11/2025","นางสาวพัชนี คำวงษา"],
+["10/11/2025","002","ขอซื้อ","ธุรการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิจัย","คณบดี","สำเร็จ","ภายใน","10/11/2025","นางสาวพัชนี คำวงษา"],
+["11/11/2025","003","ลากิจ","บุคคล","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิชาการการศึกษา","คณบดี","แก้ไข","ภายใน","","นางสาวเกศรินทร์ ภูผานี"],
+["12/11/2025","004","เดินทางไปราชการ","ธุรการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายแผนและงบประมาณ","รักษาการคณบดี","สำเร็จ","ภายใน","12/11/2025","นางสาวพัชนี คำวงษา"],
+["13/11/2025","005","ขอความอนุเคราะห์","ธุรการ","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","รักษาการคณบดี","สำเร็จ","ภายนอก","13/11/2025","นางสาวพัชนี คำวงษา"],
+["14/11/2025","006","โครงการ","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.งานโครงสร้างพื้นฐาน","รักษาการคณบดี","ยกเลิก","ภายนอก","14/11/2025","นางสาวพัชนี คำวงษา"],
+["15/11/2025","007","กิจกรรม","บุคคล","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.เทคโนโลยีสารสนเทศ","คณบดี","ยกเลิก","ภายใน","15/11/2025","นางสาวเกศรินทร์ ภูผานี"],
+["17/11/2025","008","บันทึกข้อความ","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","","ดำเนินการ","ภายใน","","นางสาวพัชนี คำวงษา"],
+["18/11/2025","009","วิจัย","ธุรการ","วิจัย","หัวหน้าสำนักงานเลขาคณบดี","","","ดำเนินการ","ภายใน","","นางสาวพัชนี คำวงษา"],
+["18/11/2025","010","วิชาการ","บุคคล","วิจัย","","","","ดำเนินการ","ภายใน","","นางสาวเกศรินทร์ ภูผานี"],
+["18/11/2025","011","การเงิน","บุคคล","","","","","ดำเนินการ","ภายใน","","นางสาวเกศรินทร์ ภูผานี"],
+["18/11/2025","012","ขออนุมัติ","ธุรการ","","","","","ดำเนินการ","ภายนอก","","นางสาวพัชนี คำวงษา"]];
 </script>
 
 <div id="warn" class="hidden noprint bg-amber-50 border-b border-amber-300 text-amber-900 text-sm px-4 py-2 text-center"></div>
 
 <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 noprint">
  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-  <div class="flex items-center gap-3 cursor-pointer" onclick="closeM()">
+  <div class="flex items-center gap-3 cursor-pointer" onclick="if(!TRACK_NO)closeM()">
    <div class="w-11 h-11 rounded-xl navy text-white flex items-center justify-center text-xl shadow">📑</div>
    <div><div class="font-bold leading-tight text-[15px]" style="color:var(--nv)">ระบบกำกับติดตามสถานะหนังสือ</div>
     <div class="text-[11px] text-slate-500">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div></div></div>
@@ -55,22 +61,28 @@ const FALLBACK=[
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
     <span class="w-2 h-2 rounded-full bg-emerald-500 pulse"></span><span id="lsync"></span></span>
    <button onclick="loadData()" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔄 รีเฟรช</button>
-   <button onclick="window.print()" class="text-sm blue text-white rounded-lg px-4 py-2 font-medium shadow-sm">🖨 พิมพ์รายงาน</button>
+   <button onclick="window.print()" class="full-dash text-sm blue text-white rounded-lg px-4 py-2 font-medium shadow-sm">🖨 พิมพ์รายงาน</button>
   </div></div></header>
 
-<div class="navy text-white">
+<div class="navy text-white full-dash">
  <div class="max-w-7xl mx-auto px-4 py-6">
   <h1 class="text-2xl md:text-3xl font-bold">แดชบอร์ดกำกับติดตามหนังสือราชการ</h1>
   <p class="text-blue-200 mt-1 text-sm">ข้อมูลจาก Google Sheets · แสดงสถานะและขั้นตอนที่หนังสือแต่ละเรื่องค้างอยู่</p>
   <div id="hero" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5"></div></div></div>
 
-<main class="max-w-7xl mx-auto px-4 py-5" id="body"></main>
+<main class="max-w-7xl mx-auto px-4 py-5 full-dash" id="body"></main>
+
+<!-- ══════════ หน้าติดตามเฉพาะเรื่อง (เปิดจากลิงก์ใน QR) ══════════ -->
+<div id="trackView" class="hidden max-w-xl mx-auto px-4 py-6"></div>
 
 <footer class="border-t border-slate-200 bg-white"><div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500">
  งานสารบรรณ สำนักงานเลขานุการคณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div></footer>
 
 <div id="modal" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeM()">
  <div class="card w-full max-w-2xl max-h-[90vh] overflow-auto p-6" id="modalBody"></div></div>
+
+<!-- ══════════ ใบปะหน้า (แสดงเฉพาะตอนสั่งพิมพ์) ══════════ -->
+<div id="coverSheet"></div>
 
 <script>
 /* ══════════ UTIL ══════════ */
@@ -101,6 +113,9 @@ const fmt=d=>d?String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).pa
 const dkey=d=>d?d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate():0;
 
 let ROWS=[], KPI={}, Q='', FS='', FT='';
+/* หน้าติดตามเฉพาะเรื่อง: เปิดผ่านลิงก์ ?no=หมายเลขหนังสือ (สแกนจาก QR ในใบปะหน้า) */
+const TRACK_NO=new URLSearchParams(location.search).get('no');
+if(TRACK_NO){ document.body.classList.add('track-mode'); trackView.classList.remove('hidden'); }
 
 /* ══════════ โหลดข้อมูลจาก Google Sheets (gviz) ══════════ */
 async function loadData(){
@@ -133,7 +148,7 @@ async function loadData(){
       (r.c||[]).forEach((c,i)=>{ o[cols[i]] = c ? (c.f!=null?c.f:c.v) : ''; }); return o; });
     const list=raw.filter(o=>String(o['หมายเลขหนังสือ']||'').trim())
       .map(o=>[o['วันที่เริ่มงาน'],o['หมายเลขหนังสือ'],o['เรื่อง'],o['ผู้รับ'],o['หัวหน้ากลุ่มงาน'],
-        o['หัวหน้าสำนักงานเลขาคณบดี'],o['ผู้บริหาร'],o['คณบดี'],o['สถานะ'],o['ประเภท'],o['วันที่งานสำเร็จ']]);
+        o['หัวหน้าสำนักงานเลขาคณบดี'],o['ผู้บริหาร'],o['คณบดี'],o['สถานะ'],o['ประเภท'],o['วันที่งานสำเร็จ'],o['ชื่อผู้รับเรื่อง']]);
     if(!list.length) throw new Error('ไม่พบข้อมูลในชีต (ตรวจสอบชื่อหัวคอลัมน์ให้ตรงกับที่ระบบต้องการ)');
     build(list); warn.classList.add('hidden');
     live.classList.remove('hidden'); lsync.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
@@ -165,6 +180,7 @@ function build(list){
       : nextStage ? 'รอ '+nextStage.c : 'รอสรุปปิดเรื่อง';
     return {no:String(a[1]).trim(), subject:a[2]||'-', owners:owners, status:status, type:a[9]||'-',
       start:sd, end:parseDate(a[10]), days:days, sla:sla, over:over, passed:passed, where:where, closed:closed,
+      recip:a[11]||'',
       timeState: closed?(status==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':((sla-days)<=1?'ใกล้ครบกำหนด':'ปกติ'))};
   }).sort((x,y)=>(dkey(y.start)-dkey(x.start))||((+y.no||0)-(+x.no||0)));   /* ใหม่ → เก่า */
 
@@ -176,7 +192,7 @@ function build(list){
     inside:ROWS.filter(r=>r.type==='ภายใน').length, outside:ROWS.filter(r=>r.type==='ภายนอก').length,
     avg:fin.length?Math.round(fin.reduce((a,b)=>a+(+b.days||0),0)/fin.length):0,
     rate:ROWS.length?Math.round(c('สำเร็จ')/ROWS.length*100):0};
-  render();
+  if(TRACK_NO){ renderTrackView(); } else { render(); }
 }
 /* ══════════ RENDER ══════════ */
 function render(){
@@ -306,9 +322,11 @@ function render(){
   }
 }
 
-/* ══════════ ไทม์ไลน์รายเรื่อง ══════════ */
-function detail(no){
-  const d=ROWS.find(x=>x.no===no); if(!d) return;
+/* ══════════ ลิงก์ติดตามเฉพาะเรื่อง (เข้ารหัสใน QR) ══════════ */
+const trackLink=no=>location.origin+location.pathname+'?no='+encodeURIComponent(no);
+
+/* ══════════ การ์ดไทม์ไลน์ + สถานะของหนังสือ 1 เรื่อง (ใช้ร่วมกันทั้ง modal และหน้าติดตามจาก QR) ══════════ */
+function docCardHTML(d, standalone){
   const tl=STAGES.map((g,i)=>{
     const owner=d.owners[g.c], on=!!String(owner||'').trim();
     const cur=!on&&!d.closed&&i===d.passed;
@@ -319,24 +337,83 @@ function detail(no){
       ${cur?'<span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full ml-1">อยู่ระหว่างดำเนินการ</span>':''}</div>
       <div class="text-sm ${on?'text-slate-600':'text-slate-400'}">${on?'ผู้รับผิดชอบ: '+esc(owner):'ยังไม่ถึงขั้นตอนนี้'}</div></div></div>`;
   }).join('');
-  openM(`<div class="flex justify-between items-start gap-3 mb-4">
-   <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
-    <div class="text-3xl font-bold" style="color:var(--nv)">${esc(d.no)}</div>
-    <div class="font-medium mt-1">${esc(d.subject)}</div>
-    <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.end?' · เสร็จ '+fmt(d.end):''}</div>
-    <div class="mt-2 flex gap-2 flex-wrap">
-     <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status)}</span>
-     <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
-   <button onclick="closeM()" class="text-3xl text-slate-400 leading-none">&times;</button></div>
+  return `<div class="${standalone?'card p-5':''}">
+   <div class="flex justify-between items-start gap-3 mb-4">
+    <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
+     <div class="text-3xl font-bold" style="color:var(--nv)">${esc(d.no)}</div>
+     <div class="font-medium mt-1">${esc(d.subject)}</div>
+     <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.end?' · เสร็จ '+fmt(d.end):''}</div>
+     <div class="mt-2 flex gap-2 flex-wrap">
+      <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status)}</span>
+      <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
+    ${standalone?'':'<button onclick="closeM()" class="text-3xl text-slate-400 leading-none">&times;</button>'}</div>
    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-sm">
     <b class="text-blue-800">ขั้นตอนปัจจุบัน:</b> ${esc(d.where)}</div>
    <div class="grid grid-cols-3 gap-3 mb-5 text-center">
-    <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ดำเนินการมาแล้ว</div><div class="text-2xl font-bold text-blue-700">${d.days===''?'-':d.days}</div><div class="text-xs text-slate-400">วัน</div></div>
+    <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ผ่านมา (วัน)</div><div class="text-2xl font-bold text-blue-700">${d.days===''?'-':d.days}</div><div class="text-xs text-slate-400">วัน</div></div>
     <div class="bg-slate-50 rounded-xl py-3"><div class="text-xs text-slate-500">กำหนดแล้วเสร็จ</div><div class="text-2xl font-bold text-slate-700">${d.sla}</div><div class="text-xs text-slate-400">วัน</div></div>
     <div class="${d.over>0?'bg-rose-50':'bg-emerald-50'} rounded-xl py-3"><div class="text-xs text-slate-500">เกินกำหนด</div><div class="text-2xl font-bold ${d.over>0?'text-rose-600':'text-emerald-600'}">${d.over}</div><div class="text-xs text-slate-400">วัน</div></div></div>
    <div class="mb-4"><div class="flex justify-between text-xs text-slate-500 mb-1"><span>ความคืบหน้า</span><span>${d.passed}/5 ขั้นตอน</span></div>
     <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-3 rounded-full" style="width:${d.passed/5*100}%;background:${d.over>0?'#e11d48':'#1d4ed8'}"></div></div></div>
-   <h3 class="font-bold mb-3" style="color:var(--nv)">ไทม์ไลน์การเสนอหนังสือ</h3>${tl}`);
+   <h3 class="font-bold mb-3" style="color:var(--nv)">ไทม์ไลน์การเสนอหนังสือ</h3>${tl}
+   <div class="flex gap-2 flex-wrap mt-5 pt-4 border-t border-slate-100 noprint">
+    <button onclick="printCover('${esc(d.no)}')" class="text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🖨 พิมพ์ใบปะหน้า (QR)</button>
+    <button id="copyBtn-${esc(d.no)}" onclick="copyLink('${esc(d.no)}')" class="text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🔗 คัดลอกลิงก์ติดตาม</button>
+   </div></div>`;
+}
+function detail(no){
+  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  openM(docCardHTML(d,false));
+}
+/* ══════════ หน้าติดตามเฉพาะเรื่อง (เปิดจาก QR) ══════════ */
+function renderTrackView(){
+  const d=ROWS.find(x=>x.no===TRACK_NO);
+  document.title='ติดตามหนังสือ '+TRACK_NO+' | DocTrack';
+  if(!d){
+    trackView.innerHTML=`<div class="card p-6 text-center">
+     <div class="text-4xl mb-2">🔎</div>
+     <div class="font-bold text-slate-700 mb-1">ไม่พบหนังสือเลขที่ "${esc(TRACK_NO)}"</div>
+     <p class="text-sm text-slate-500">ลองรีเฟรช หรือตรวจสอบว่าลิงก์/QR ถูกต้อง</p>
+     <button onclick="loadData()" class="mt-3 text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🔄 รีเฟรช</button></div>`;
+    return;
+  }
+  trackView.innerHTML=`<div class="flex items-center gap-2 text-xs text-slate-500 mb-3">
+    <span class="w-2 h-2 rounded-full bg-emerald-500 pulse"></span>
+    <span>ติดตามแบบเรียลไทม์ · อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH')}</span></div>
+   ${docCardHTML(d,true)}`;
+}
+/* ══════════ ใบปะหน้า + QR CODE ══════════ */
+function printCover(no){
+  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  const url=trackLink(d.no);
+  coverSheet.innerHTML=`<div style="max-width:480px;margin:24px auto;padding:28px;border:2px solid #0f2d5c;border-radius:12px;font-family:'Sarabun',sans-serif">
+   <div style="text-align:center;margin-bottom:14px">
+    <div style="font-weight:700;font-size:15px;color:#0f2d5c">ใบปะหน้าติดตามสถานะหนังสือ</div>
+    <div style="font-size:11px;color:#64748b">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div></div>
+   <table style="width:100%;font-size:14px;border-collapse:collapse;margin-bottom:16px">
+    <tr><td style="padding:5px 0;color:#64748b;width:38%">วันที่เริ่มงาน</td><td style="padding:5px 0;font-weight:600">${esc(fmt(d.start))}</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">หมายเลขหนังสือ</td><td style="padding:5px 0;font-weight:700;font-family:monospace;font-size:16px">${esc(d.no)}</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">เรื่อง</td><td style="padding:5px 0;font-weight:600">${esc(d.subject)}</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">ประเภท</td><td style="padding:5px 0;font-weight:600">${esc(d.type)}</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">ชื่อผู้รับเรื่อง</td><td style="padding:5px 0;font-weight:600">${esc(d.recip||'-')}</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">ผู้รับ (ตำแหน่ง)</td><td style="padding:5px 0;font-weight:600">${esc(d.owners['ผู้รับ']||'-')}</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">กำหนดแล้วเสร็จ</td><td style="padding:5px 0;font-weight:600">${d.sla} วัน</td></tr></table>
+   <div class="qrbox" id="qrPrintBox" style="display:flex;justify-content:center;padding:12px 0"></div>
+   <div style="text-align:center;font-size:11px;color:#475569;margin-top:6px">
+    สแกน QR Code เพื่อติดตามสถานะแบบเรียลไทม์ด้วยสมาร์ทโฟน<br>
+    <span style="font-family:monospace">${esc(url)}</span></div></div>`;
+  const box=document.getElementById('qrPrintBox'); box.innerHTML='';
+  new QRCode(box,{text:url,width:170,height:170,correctLevel:QRCode.CorrectLevel.M});
+  document.body.classList.add('printing-cover');
+  setTimeout(()=>window.print(),200);
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing-cover'));
+/* ══════════ คัดลอกลิงก์ติดตาม ══════════ */
+function copyLink(no){
+  const url=trackLink(no), btn=document.getElementById('copyBtn-'+no);
+  navigator.clipboard.writeText(url).then(()=>{
+    if(btn){ const t=btn.textContent; btn.textContent='✅ คัดลอกแล้ว'; setTimeout(()=>btn.textContent=t,1500); }
+  }).catch(()=>{ if(btn) btn.textContent='ลิงก์: '+url; });
 }
 function exportCSV(){
   const head=['หมายเลขหนังสือ','เรื่อง','ประเภท','วันที่เริ่มงาน','วันที่งานสำเร็จ','สถานะ','ขั้นตอนปัจจุบัน','ผ่านมา (วัน)','กำหนด (วัน)','เกินกำหนด (วัน)','สถานะเวลา'];
