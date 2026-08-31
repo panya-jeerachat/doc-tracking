@@ -22,10 +22,8 @@
 <script>
 const SHEET_ID = '1dxVXxM-JmUXMf9dNYBTGufcwmNdkWo_eA6EUw0mdScA';
 const GID      = '0';
-/* กำหนดจำนวนวันแล้วเสร็จตามประเภทเรื่อง (SLA) */
-const SLA = {'รับเรื่อง':3,'ลากิจ':3,'ลาป่วย':3,'บันทึกข้อความ':5,'ขออนุมัติ':7,'ขอซื้อ':10,
- 'เดินทางไปราชการ':7,'ขอความอนุเคราะห์':7,'โครงการ':14,'กิจกรรม':10,'วิจัย':14,'วิชาการ':10,'การเงิน':7};
-const slaOf = s => SLA[String(s||'').trim()] || 7;
+/* กำหนดจำนวนวันแล้วเสร็จ (SLA) — ทุกประเภทเรื่องใช้ 3 วันเท่ากันหมด ตามที่ต้องการ */
+const slaOf = s => 3;
 /* 5 ขั้นตอนการเสนอหนังสือ */
 const STAGES=[{c:'ผู้รับ',i:'📥'},{c:'หัวหน้ากลุ่มงาน',i:'👤'},{c:'หัวหน้าสำนักงานเลขาคณบดี',i:'🗂'},
  {c:'ผู้บริหาร',i:'🧑‍💼'},{c:'คณบดี',i:'🎓'}];
@@ -167,7 +165,7 @@ function build(list){
       : nextStage ? 'รอ '+nextStage.c : 'รอสรุปปิดเรื่อง';
     return {no:String(a[1]).trim(), subject:a[2]||'-', owners:owners, status:status, type:a[9]||'-',
       start:sd, end:parseDate(a[10]), days:days, sla:sla, over:over, passed:passed, where:where, closed:closed,
-      timeState: closed?(status==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':((sla-days)<=2?'ใกล้ครบกำหนด':'ปกติ'))};
+      timeState: closed?(status==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':((sla-days)<=1?'ใกล้ครบกำหนด':'ปกติ'))};
   }).sort((x,y)=>(dkey(y.start)-dkey(x.start))||((+y.no||0)-(+x.no||0)));   /* ใหม่ → เก่า */
 
   const c=s=>ROWS.filter(r=>r.status===s).length;
@@ -215,7 +213,7 @@ function render(){
    <div class="overflow-auto max-h-[560px]"><table class="w-full text-sm">
     <thead class="text-slate-600"><tr>
      <th class="p-3 text-left">เลขที่</th><th class="p-3 text-left">เรื่อง</th><th class="p-3">วันที่เริ่ม</th>
-     <th class="p-3">ผ่านมา</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
+     <th class="p-3">ผ่านมา (วัน)</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
      <th class="p-3 text-left">ขั้นตอนปัจจุบัน</th><th class="p-3">สถานะ</th><th class="p-3">เวลา</th><th class="p-3"></th></tr></thead><tbody>
     ${f.map(d=>`<tr class="border-t border-slate-100 hover:bg-blue-50/50 cursor-pointer ${d.over>0?'bg-rose-50/40':''}" onclick="detail('${d.no}')">
      <td class="p-3 font-mono font-bold text-slate-700">${esc(d.no)}</td>
