@@ -7,29 +7,37 @@
 <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
- :root{--nv:#0f2d5c;--bl:#1d4ed8;--sky:#eff6ff}
+ :root{--nv:#0f2d5c;--bl:#1d4ed8}
  body{font-family:'Sarabun',sans-serif;background:#fff;color:#0f172a}
  .card{background:#fff;border:1px solid #e5e9f2;border-radius:16px;box-shadow:0 1px 2px rgba(15,45,92,.04)}
- .card-h{transition:.2s}.card-h:hover{box-shadow:0 8px 24px rgba(29,78,216,.10);transform:translateY(-2px)}
+ .kpi{border-radius:16px;padding:14px 16px;border:1px solid}
  .navy{background:var(--nv)}.blue{background:var(--bl)}
- .tabs{border-bottom:2px solid transparent}.tabs.on{border-color:var(--bl);color:var(--bl);font-weight:600}
- .pulse{animation:pl 2s infinite}@keyframes pl{0%,100%{opacity:1}50%{opacity:.4}}
+ .pulse{animation:pl 2s infinite}@keyframes pl{0%,100%{opacity:1}50%{opacity:.35}}
  .side .on{background:var(--bl);color:#fff}
- ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#c7d2e5;border-radius:9px}
  @media print{.noprint{display:none!important}}
 </style>
 </head>
 <body>
 <script>
-/* ===== ตั้งค่า 2 บรรทัด ===== */
-const API = 'https://script.google.com/macros/s/XXXXXXXXXXXX/exec';   // URL Web App
-const TRACK_BASE = '';   // URL GitHub Pages เช่น 'https://user.github.io/doctrack/' (เว้นว่าง=ที่อยู่ปัจจุบัน)
+/* ═══ ตั้งค่า 2 บรรทัดนี้เท่านั้น ═══ */
+const API = 'https://script.google.com/macros/s/XXXXXXXXXXXX/exec';  // ← URL Web App
+const TRACK_BASE = '';   // ← URL GitHub Pages (เว้นว่าง = ใช้ที่อยู่ปัจจุบัน)
+
 var BOOT={}; try{ BOOT=JSON.parse('<?!= P ?>'); }catch(e){}
 const IN_GAS = typeof google!=='undefined' && google.script && google.script.run;
+/* ข้อมูลสำรองจากชีต (ใช้แสดงชั่วคราวหากเชื่อมต่อไม่ได้ จะได้ไม่เห็นหน้าว่าง) */
+const FALLBACK=[["9/11/2025","001","รับเรื่อง","ธุรการ","สำเร็จ"],["10/11/2025","002","ขอซื้อ","ธุรการ","สำเร็จ"],
+["11/11/2025","003","ลากิจ","บุคคล","แก้ไข"],["12/11/2025","004","เดินทางไปราชการ","ธุรการ","สำเร็จ"],
+["13/11/2025","005","ขอความอนุเคราะห์","ธุรการ","สำเร็จ"],["14/11/2025","006","โครงการ","ธุรการ","ยกเลิก"],
+["15/11/2025","007","กิจกรรม","บุคคล","ยกเลิก"],["17/11/2025","008","บันทึกข้อความ","ธุรการ","ดำเนินการ"],
+["18/11/2025","009","วิจัย","ธุรการ","ดำเนินการ"],["18/11/2025","010","วิชาการ","บุคคล","ดำเนินการ"],
+["18/11/2025","011","การเงิน","บุคคล","ดำเนินการ"],["18/11/2025","012","ขออนุมัติ","-","ไม่ระบุ"]];
 </script>
 
-<!-- ================= NAVBAR ================= -->
-<header id="nav" class="hidden sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 noprint">
+<!-- ===== แถบสถานะการเชื่อมต่อ ===== -->
+<div id="warn" class="hidden noprint bg-amber-50 border-b border-amber-300 text-amber-900 text-sm px-4 py-2 text-center"></div>
+
+<header id="nav" class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 noprint">
  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
   <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
    <div class="w-11 h-11 rounded-xl navy text-white flex items-center justify-center text-xl shadow">📑</div>
@@ -42,53 +50,44 @@ const IN_GAS = typeof google!=='undefined' && google.script && google.script.run
    <button onclick="showLogin()" class="text-sm blue text-white rounded-lg px-4 py-2 hover:opacity-90 font-medium shadow-sm">เข้าสู่ระบบผู้ดูแล</button>
   </div></div></header>
 
-<!-- ================= PUBLIC DASHBOARD ================= -->
 <div id="home" class="hidden">
  <div class="navy text-white">
-  <div class="max-w-7xl mx-auto px-4 py-8">
-   <h1 class="text-2xl md:text-3xl font-bold">แดชบอร์ดติดตามสถานะหนังสือราชการ</h1>
-   <p class="text-blue-200 mt-1 text-sm">เปิดให้ทุกท่านตรวจสอบความคืบหน้าได้แบบเรียลไทม์ · ไม่ต้องเข้าสู่ระบบ</p>
-   <div id="hkpi" class="grid grid-cols-2 md:grid-cols-6 gap-3 mt-6"></div></div></div>
+  <div class="max-w-7xl mx-auto px-4 py-7">
+   <h1 class="text-2xl md:text-3xl font-bold">แดชบอร์ดกำกับติดตามหนังสือราชการ</h1>
+   <p class="text-blue-200 mt-1 text-sm">ข้อมูลเรียลไทม์จาก Google Sheets · เปิดให้ทุกท่านตรวจสอบได้โดยไม่ต้องเข้าสู่ระบบ</p>
+   <div id="hero" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6"></div></div></div>
  <div class="max-w-7xl mx-auto px-4 py-6" id="hbody"></div>
- <footer class="border-t border-slate-200 mt-8">
-  <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500">
-   งานสารบรรณ สำนักงานเลขานุการคณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม · ข้อมูลอัปเดตอัตโนมัติทุก 30 วินาที</div></footer>
-</div>
+ <footer class="border-t border-slate-200 mt-6"><div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500">
+  งานสารบรรณ สำนักงานเลขานุการคณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div></footer></div>
 
-<!-- ================= TRACK ================= -->
 <div id="track" class="hidden max-w-3xl mx-auto p-4"></div>
 
-<!-- ================= LOGIN ================= -->
-<div id="login" class="hidden min-h-[85vh] flex items-center justify-center p-4">
+<div id="login" class="hidden min-h-[80vh] flex items-center justify-center p-4">
  <div class="card w-full max-w-md p-8">
-  <div class="text-center mb-6">
-   <div class="w-16 h-16 mx-auto rounded-2xl navy text-white flex items-center justify-center text-3xl">🔐</div>
+  <div class="text-center mb-6"><div class="w-16 h-16 mx-auto rounded-2xl navy text-white flex items-center justify-center text-3xl">🔐</div>
    <h1 class="text-xl font-bold mt-3" style="color:var(--nv)">เข้าสู่ระบบผู้ดูแล</h1>
-   <p class="text-sm text-slate-500">สำหรับเจ้าหน้าที่และผู้บริหารเท่านั้น</p></div>
+   <p class="text-sm text-slate-500">สำหรับเจ้าหน้าที่และผู้บริหาร</p></div>
   <label class="text-sm text-slate-600">ชื่อผู้ใช้</label>
-  <input id="u" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-blue-200 outline-none">
+  <input id="u" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3 outline-none focus:ring-2 focus:ring-blue-200">
   <label class="text-sm text-slate-600">รหัสผ่าน</label>
-  <input id="p" type="password" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-200 outline-none"
-   onkeydown="if(event.key==='Enter')doLogin()">
-  <button onclick="doLogin()" class="w-full blue text-white py-2.5 rounded-lg font-semibold hover:opacity-90">เข้าสู่ระบบ</button>
+  <input id="p" type="password" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-200" onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()" class="w-full blue text-white py-2.5 rounded-lg font-semibold">เข้าสู่ระบบ</button>
   <p id="lerr" class="text-rose-600 text-sm mt-3 text-center"></p>
   <button onclick="goHome()" class="w-full text-sm text-slate-500 mt-4 hover:underline">← กลับหน้าแดชบอร์ด</button></div></div>
 
-<!-- ================= ADMIN APP ================= -->
 <div id="app" class="hidden min-h-screen flex">
  <aside class="side w-60 bg-white border-r border-slate-200 flex flex-col shrink-0 noprint">
   <div class="p-4 border-b border-slate-200"><div class="font-bold" style="color:var(--nv)">DocTrack ERP</div>
    <div class="text-xs text-slate-500">ENG • MSU</div></div>
   <nav id="menu" class="p-2 space-y-1 text-sm flex-1"></nav>
-  <div class="p-4 border-t border-slate-200 text-xs">
-   <div id="who" class="font-semibold" style="color:var(--nv)"></div>
+  <div class="p-4 border-t border-slate-200 text-xs"><div id="who" class="font-semibold" style="color:var(--nv)"></div>
    <div id="whorole" class="text-slate-500 mb-2"></div>
    <button onclick="myPwForm()" class="block text-blue-700 hover:underline mb-1">🔑 เปลี่ยนรหัสผ่าน</button>
-   <button onclick="goHome()" class="block text-slate-500 hover:underline mb-1">🏠 หน้าแดชบอร์ดสาธารณะ</button>
+   <button onclick="goHome()" class="block text-slate-500 hover:underline mb-1">🏠 แดชบอร์ดสาธารณะ</button>
    <button onclick="logout()" class="text-rose-600 hover:underline">ออกจากระบบ</button></div></aside>
- <main class="flex-1 overflow-x-hidden bg-slate-50/60">
+ <main class="flex-1 bg-slate-50/60">
   <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20 noprint">
-   <h2 id="ptitle" class="font-bold text-lg" style="color:var(--nv)">แดชบอร์ด</h2>
+   <h2 id="ptitle" class="font-bold text-lg" style="color:var(--nv)">ภาพรวม</h2>
    <div class="flex items-center gap-3 text-sm"><span id="sync" class="text-slate-400 text-xs"></span>
     <button onclick="load()" class="border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50">🔄 รีเฟรช</button></div></header>
   <div id="page" class="p-6"></div></main></div>
@@ -105,129 +104,171 @@ const ROLE={admin:'ผู้ดูแลระบบ',receiver:'ผู้รั�
 const SC={'สำเร็จ':{b:'bg-emerald-50 text-emerald-700 border-emerald-200',d:'#10b981'},
  'ดำเนินการ':{b:'bg-blue-50 text-blue-700 border-blue-200',d:'#2563eb'},
  'แก้ไข':{b:'bg-amber-50 text-amber-700 border-amber-200',d:'#f59e0b'},
- 'ยกเลิก':{b:'bg-slate-100 text-slate-500 border-slate-200',d:'#94a3b8'}};
+ 'ยกเลิก':{b:'bg-slate-100 text-slate-500 border-slate-200',d:'#94a3b8'},
+ 'ไม่ระบุ':{b:'bg-violet-50 text-violet-700 border-violet-200',d:'#8b5cf6'}};
 const TC={'เกินกำหนด':'bg-rose-50 text-rose-700 border-rose-200','ใกล้ครบกำหนด':'bg-orange-50 text-orange-700 border-orange-200',
  'ปกติ':'bg-emerald-50 text-emerald-700 border-emerald-200','เสร็จแล้ว':'bg-slate-50 text-slate-500 border-slate-200',
  'ยกเลิก':'bg-slate-50 text-slate-400 border-slate-200'};
 const TI={'เกินกำหนด':'🔴','ใกล้ครบกำหนด':'🟠','ปกติ':'🟢','เสร็จแล้ว':'✅','ยกเลิก':'—'};
-let P={rows:[],q:'',fs:'',ft:''};
-let S={user:null,token:null,rows:[],users:[],page:'dash',q:'',fs:'',ft:'',timer:null};
+let P={rows:[],kpi:null,q:'',fs:'',ft:'',t:null,tt:null};
+let S={user:null,token:null,rows:[],users:[],kpi:null,page:'dash',q:'',fs:'',ft:'',timer:null};
 
-function api(b){
+/* ── JSONP: ไม่ติด CORS ── */
+function api(body){
   if(IN_GAS) return new Promise((res,rej)=>google.script.run
-    .withSuccessHandler(t=>res(JSON.parse(t))).withFailureHandler(rej).rpc(JSON.stringify(b)));
-  return fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(b)}).then(r=>r.json());
+    .withSuccessHandler(t=>res(JSON.parse(t))).withFailureHandler(rej).rpc(JSON.stringify(body)));
+  return new Promise((res,rej)=>{
+    if(!API || API.indexOf('XXXX')>=0) return rej(new Error('ยังไม่ได้ตั้งค่า URL ของ Web App ในตัวแปร API'));
+    const cb='dt_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+    const s=document.createElement('script');
+    const done=()=>{ try{delete window[cb]}catch(e){window[cb]=undefined} s.remove(); };
+    window[cb]=d=>{ done(); res(d); };
+    s.onerror=()=>{ done(); rej(new Error('เชื่อมต่อ Apps Script ไม่สำเร็จ')); };
+    s.src=API+'?callback='+cb+'&p='+encodeURIComponent(JSON.stringify(body))+'&_='+Date.now();
+    document.head.appendChild(s);
+    setTimeout(()=>{ if(window[cb]){ done(); rej(new Error('หมดเวลาเชื่อมต่อ (20 วินาที)')); } },20000);
+  });
 }
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const openM=h=>{modalBody.innerHTML=h;modal.classList.remove('hidden')};
 const closeM=()=>modal.classList.add('hidden');
-const sb=s=>(SC[s]||SC['ยกเลิก']).b;
-const tb=t=>TC[t]||TC['ปกติ'];
+const sb=s=>(SC[s]||SC['ไม่ระบุ']).b, tb=t=>TC[t]||TC['ปกติ'];
 const dot=st=>!st?'bg-slate-200':st.status==='ผ่าน'?'bg-emerald-500':st.status==='ตีกลับแก้ไข'?'bg-amber-500'
  :st.status==='ยกเลิก'?'bg-rose-500':'bg-blue-600';
 const done5=d=>STAGES.filter(g=>d.stages&&d.stages[g.k]&&d.stages[g.k].status==='ผ่าน').length;
-const waitAt=d=>{const g=STAGES.filter(x=>!(d.stages&&d.stages[x.k]&&d.stages[x.k].status==='ผ่าน'))[0];return g?g.c:'เสร็จครบทุกขั้น'};
+const waitAt=d=>{const g=STAGES.filter(x=>!(d.stages&&d.stages[x.k]&&d.stages[x.k].status==='ผ่าน'))[0];return g?g.c:'ครบทุกขั้น'};
 function trackURL(no,key){ const base=TRACK_BASE||(IN_GAS?API:location.origin+location.pathname);
   return base+(base.indexOf('?')>=0?'&':'?')+'doc='+encodeURIComponent(no)+(key?'&k='+key:''); }
 function qrInto(id,text,size){const el=document.getElementById(id);if(!el)return;el.innerHTML='';
  try{new QRCode(el,{text:text,width:size||150,height:size||150,correctLevel:QRCode.CorrectLevel.M});}
  catch(e){el.innerHTML='<img src="https://api.qrserver.com/v1/create-qr-code/?size='+(size||150)+'x'+(size||150)+'&data='+encodeURIComponent(text)+'">';}}
 function show(id){['home','track','login','app'].forEach(x=>document.getElementById(x).classList.add('hidden'));
- document.getElementById(id).classList.remove('hidden');
- nav.classList.toggle('hidden', id==='app');}
+ document.getElementById(id).classList.remove('hidden'); nav.classList.toggle('hidden',id==='app');}
+function warnBox(msg){ warn.classList.remove('hidden'); warn.innerHTML=msg; }
+function warnOff(){ warn.classList.add('hidden'); }
 
-/* ============ PUBLIC DASHBOARD ============ */
-async function loadPublic(silent){
-  const r=await api({action:'public'});
-  if(!r.ok) return;
-  P.rows=r.rows; lsync.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH'); live.classList.remove('hidden');
+/* ═══ PUBLIC DASHBOARD ═══ */
+function fallbackData(){
+  const T=new Date(), rows=FALLBACK.map(a=>{
+    const p=a[0].split('/'), sd=new Date(+p[2],+p[1]-1,+p[0]);
+    const closed=['สำเร็จ','ยกเลิก'].indexOf(a[4])>=0;
+    const days=Math.round((new Date(T.getFullYear(),T.getMonth(),T.getDate())-sd)/86400000);
+    const sla=7, over=closed?0:Math.max(0,days-sla);
+    return {no:a[1],subject:a[2],type:'ภายใน',cat:a[2],start:a[0],end:'',days:closed?'-':days,sla:sla,over:over,
+      timeState:closed?(a[4]==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':'ปกติ'),
+      status:a[4],updated:'-',stages:{},key:'',owners:{recv:a[3]}};
+  });
+  const c=s=>rows.filter(r=>r.status===s).length;
+  return {ok:true,rows:rows,kpi:{total:rows.length,running:c('ดำเนินการ'),fixing:c('แก้ไข'),success:c('สำเร็จ'),
+    cancel:c('ยกเลิก'),unknown:c('ไม่ระบุ'),watch:rows.filter(r=>['สำเร็จ','ยกเลิก'].indexOf(r.status)<0).length,
+    over:rows.filter(r=>r.over>0).length,soon:0,avgDone:0,rate:Math.round(c('สำเร็จ')/rows.length*100)}};
+}
+async function loadPublic(){
+  try{
+    const r=await api({action:'public'});
+    if(!r.ok) throw new Error(r.error||'ไม่สามารถอ่านข้อมูลได้');
+    P.rows=r.rows; P.kpi=r.kpi; warnOff();
+    live.classList.remove('hidden'); lsync.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
+  }catch(e){
+    const f=fallbackData(); P.rows=f.rows; P.kpi=f.kpi; live.classList.add('hidden');
+    warnBox('⚠️ <b>ยังเชื่อมต่อ Google Sheets ไม่ได้</b> ('+esc(e.message)+') — ขณะนี้แสดง<b>ข้อมูลสำรอง</b> · '+
+      'ตรวจสอบ: ① ใส่ URL Web App ในตัวแปร <code>API</code> ② Deploy แบบ <b>Execute as: Me</b> + <b>Who has access: Anyone</b> ③ กด Deploy เวอร์ชันใหม่');
+  }
   renderHome();
 }
+function kpiCard(label,val,sub,color,bg,brd){
+  return `<div class="kpi ${bg}" style="border-color:${brd}">
+   <div class="text-[12px] text-slate-500">${label}</div>
+   <div class="text-3xl font-bold ${color}">${val}</div>
+   <div class="text-[11px] text-slate-400 mt-0.5">${sub||''}</div></div>`;
+}
 function renderHome(){
-  const R=P.rows, c=s=>R.filter(x=>x.status===s).length;
-  const open=R.filter(x=>['สำเร็จ','ยกเลิก'].indexOf(x.status)<0);
-  const late=R.filter(x=>x.over>0), soon=R.filter(x=>x.timeState==='ใกล้ครบกำหนด');
-  const fin=R.filter(x=>x.status==='สำเร็จ');
-  const avg=fin.length?Math.round(fin.reduce((a,b)=>a+(+b.days||0),0)/fin.length):0;
-  const kpi=[['ทั้งหมด',R.length,'text-white','bg-white/10'],['กำลังดำเนินการ',open.length,'text-blue-200','bg-white/10'],
-   ['สำเร็จแล้ว',c('สำเร็จ'),'text-emerald-300','bg-white/10'],['ต้องแก้ไข',c('แก้ไข'),'text-amber-300','bg-white/10'],
-   ['เกินกำหนด',late.length,'text-rose-300','bg-rose-500/20'],['เฉลี่ยเสร็จใน',avg+' วัน','text-white','bg-white/10']];
-  hkpi.innerHTML=kpi.map(([l,v,cl,bg])=>`<div class="${bg} rounded-xl p-3 border border-white/10">
-   <div class="text-[11px] text-blue-200">${l}</div><div class="text-2xl font-bold ${cl}">${v}</div></div>`).join('');
+  const R=P.rows, K=P.kpi||{};
+  hero.innerHTML=[
+   ['หนังสือทั้งหมด',K.total,'รายการในระบบ','text-white'],
+   ['ต้องกำกับติดตาม',K.watch,'ยังไม่ปิดเรื่อง','text-amber-300'],
+   ['ดำเนินการเสร็จสิ้น',K.success,'คิดเป็น '+K.rate+'%','text-emerald-300'],
+   ['ยกเลิก',K.cancel,'ยุติเรื่องแล้ว','text-slate-300']
+  ].map(([l,v,s,c])=>`<div class="bg-white/10 border border-white/15 rounded-xl p-4">
+    <div class="text-[12px] text-blue-200">${l}</div><div class="text-4xl font-bold ${c}">${v}</div>
+    <div class="text-[11px] text-blue-200/80 mt-1">${s}</div></div>`).join('');
 
-  const donut=(()=>{const t=R.length||1;const seg=[['สำเร็จ',c('สำเร็จ')],['ดำเนินการ',c('ดำเนินการ')],['แก้ไข',c('แก้ไข')],['ยกเลิก',c('ยกเลิก')]];
-    let acc=0,g=[];seg.forEach(([k,v])=>{const a=acc,b=acc+v/t*100;if(v)g.push((SC[k]||SC['ยกเลิก']).d+' '+a+'% '+b+'%');acc=b;});
-    return `<div class="flex items-center gap-5">
-     <div class="w-32 h-32 rounded-full shrink-0" style="background:conic-gradient(${g.join(',')||'#e2e8f0 0 100%'})">
-      <div class="w-20 h-20 bg-white rounded-full m-6 flex flex-col items-center justify-center">
-       <div class="text-xl font-bold" style="color:var(--nv)">${R.length}</div><div class="text-[10px] text-slate-500">เรื่อง</div></div></div>
-     <div class="flex-1">${seg.map(([k,v])=>`<div class="flex items-center justify-between text-sm py-1">
-      <span class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:${(SC[k]||SC['ยกเลิก']).d}"></span>${k}</span>
-      <span><b>${v}</b> <span class="text-slate-400 text-xs">${Math.round(v/t*100)}%</span></span></div>`).join('')}</div></div>`})();
+  const kpiRow=`<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+   ${kpiCard('🔵 ดำเนินการ',K.running,'อยู่ระหว่างเสนอ','text-blue-700','bg-blue-50','#bfdbfe')}
+   ${kpiCard('🟡 ต้องแก้ไข',K.fixing,'ตีกลับให้แก้','text-amber-600','bg-amber-50','#fde68a')}
+   ${kpiCard('🟢 สำเร็จ',K.success,'ผ่านคณบดีแล้ว','text-emerald-600','bg-emerald-50','#a7f3d0')}
+   ${kpiCard('⚪ ยกเลิก',K.cancel,'ยุติเรื่อง','text-slate-500','bg-slate-50','#e2e8f0')}
+   ${kpiCard('🟣 ไม่ระบุสถานะ',K.unknown,'ต้องตรวจสอบ','text-violet-600','bg-violet-50','#ddd6fe')}
+   ${kpiCard('🔴 เกินกำหนด',K.over,'เร่งด่วน','text-rose-600','bg-rose-50','#fecdd3')}</div>`;
 
-  const stageBars=STAGES.map((g,i)=>{const n=R.filter(d=>d.stages[g.k]&&d.stages[g.k].status==='ผ่าน').length;
-    const q=open.filter(d=>{const dn=d.stages[g.k]&&d.stages[g.k].status==='ผ่าน';
-      const pv=i===0||(d.stages[STAGES[i-1].k]&&d.stages[STAGES[i-1].k].status==='ผ่าน');return !dn&&pv;}).length;
-    const pc=R.length?Math.round(n/R.length*100):0;
-    return `<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${g.i} ${g.c}</span>
-     <span class="text-slate-500">${n}/${R.length}${q?` · <span class="text-blue-700">คิว ${q}</span>`:''}</span></div>
-     <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-2.5 rounded-full" style="width:${pc}%;background:var(--bl)"></div></div></div>`}).join('');
+  const t=R.length||1, seg=[['สำเร็จ',K.success],['ดำเนินการ',K.running],['แก้ไข',K.fixing],['ยกเลิก',K.cancel],['ไม่ระบุ',K.unknown]];
+  let acc=0,g=[]; seg.forEach(([k,v])=>{const a=acc,b=acc+(v||0)/t*100; if(v)g.push(SC[k].d+' '+a+'% '+b+'%'); acc=b;});
+  const donut=`<div class="flex items-center gap-5">
+   <div class="w-32 h-32 rounded-full shrink-0" style="background:conic-gradient(${g.join(',')||'#e2e8f0 0 100%'})">
+    <div class="w-20 h-20 bg-white rounded-full m-6 flex flex-col items-center justify-center">
+     <div class="text-xl font-bold" style="color:var(--nv)">${K.total}</div><div class="text-[10px] text-slate-500">เรื่อง</div></div></div>
+   <div class="flex-1">${seg.filter(x=>x[1]).map(([k,v])=>`<div class="flex items-center justify-between text-sm py-1">
+    <span class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:${SC[k].d}"></span>${k}</span>
+    <span><b>${v}</b> <span class="text-slate-400 text-xs">${Math.round(v/t*100)}%</span></span></div>`).join('')}</div></div>`;
+
+  const stageBars=STAGES.map((g2,i)=>{const n=R.filter(d=>d.stages[g2.k]&&d.stages[g2.k].status==='ผ่าน').length;
+   const pc=R.length?Math.round(n/R.length*100):0;
+   return `<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${g2.i} ${g2.c}</span>
+    <span class="text-slate-500">${n}/${R.length}</span></div>
+    <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-2.5 rounded-full" style="width:${pc}%;background:var(--bl)"></div></div></div>`}).join('');
 
   const cat={}; R.forEach(d=>{const k=d.cat||d.subject||'-';cat[k]=(cat[k]||0)+1});
-  const catList=Object.entries(cat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>
-   `<div class="flex items-center gap-2 text-sm py-1"><span class="w-28 truncate">${esc(k)}</span>
+  const catList=Object.entries(cat).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>
+   `<div class="flex items-center gap-2 text-sm py-1"><span class="w-32 truncate">${esc(k)}</span>
     <div class="flex-1 h-2 bg-slate-100 rounded-full"><div class="h-2 rounded-full" style="width:${v/R.length*100}%;background:#60a5fa"></div></div>
     <b class="w-6 text-right">${v}</b></div>`).join('');
 
-  const lateList=late.sort((a,b)=>b.over-a.over).slice(0,6).map(d=>
-   `<div class="flex justify-between items-center border-b border-slate-100 py-2 text-sm cursor-pointer hover:bg-rose-50/50 px-1 rounded"
-     onclick="openTrack('${esc(d.no)}','${d.key}')">
+  const watch=R.filter(d=>['สำเร็จ','ยกเลิก'].indexOf(d.status)<0).sort((a,b)=>(b.over||0)-(a.over||0));
+  const watchList=watch.slice(0,8).map(d=>`<div class="flex justify-between items-center border-b border-slate-100 py-2 text-sm cursor-pointer hover:bg-blue-50/50 px-1 rounded" onclick="openTrack('${esc(d.no)}','${d.key}')">
     <div><b class="font-mono text-slate-700">${esc(d.no)}</b> ${esc(d.subject)}
-     <div class="text-xs text-slate-400">ค้างที่: ${waitAt(d)}</div></div>
-    <div class="text-right shrink-0"><b class="text-rose-600">เกิน ${d.over} วัน</b>
-     <div class="text-xs text-slate-400">${d.days}/${d.sla} วัน</div></div></div>`).join('');
+     <div class="text-xs text-slate-400">ค้างที่: ${waitAt(d)} · <span class="${sb(d.status)} px-1.5 rounded">${esc(d.status)}</span></div></div>
+    <div class="text-right shrink-0">${d.over>0?`<b class="text-rose-600">เกิน ${d.over} วัน</b>`:`<b class="text-blue-700">${d.days} วัน</b>`}
+     <div class="text-xs text-slate-400">กำหนด ${d.sla} วัน</div></div></div>`).join('');
 
-  const f=R.filter(d=>(!P.q||(d.no+' '+d.subject+' '+d.cat).toLowerCase().includes(P.q.toLowerCase()))
-    &&(!P.fs||d.status===P.fs)&&(!P.ft||d.timeState===P.ft));
+  const f=R.filter(d=>(!P.q||(d.no+' '+d.subject+' '+(d.cat||'')).toLowerCase().includes(P.q.toLowerCase()))
+   &&(!P.fs||d.status===P.fs)&&(!P.ft||d.timeState===P.ft));
 
-  hbody.innerHTML=`
+  hbody.innerHTML=kpiRow+`
   <div class="grid md:grid-cols-3 gap-5 mb-6">
-   <div class="card card-h p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">สัดส่วนสถานะ</h3>${donut}</div>
-   <div class="card card-h p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">ความคืบหน้าตามลำดับขั้น</h3>${stageBars}</div>
-   <div class="card card-h p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">⏰ เรื่องเกินกำหนด</h3>
-    ${late.length?lateList:'<p class="text-sm text-emerald-600 py-4 text-center">✅ ไม่มีเรื่องเกินกำหนด</p>'}
-    <div class="mt-3 text-xs text-slate-500">🟠 ใกล้ครบกำหนดอีก ${soon.length} เรื่อง</div></div></div>
+   <div class="card p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">สัดส่วนสถานะ</h3>${donut}
+    <div class="mt-4 pt-3 border-t border-slate-100 text-sm flex justify-between">
+     <span class="text-slate-500">เวลาเฉลี่ยที่ปิดเรื่องได้</span><b>${K.avgDone} วัน</b></div></div>
+   <div class="card p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">ความคืบหน้าตามลำดับขั้น</h3>${stageBars}</div>
+   <div class="card p-5"><h3 class="font-bold mb-1" style="color:var(--nv)">📌 ต้องกำกับติดตาม ${watch.length} เรื่อง</h3>
+    <p class="text-xs text-slate-500 mb-2">🔴 เกินกำหนด ${K.over} · 🟠 ใกล้ครบ ${K.soon}</p>
+    ${watch.length?watchList:'<p class="text-sm text-emerald-600 py-4 text-center">✅ ปิดเรื่องครบทุกรายการ</p>'}</div></div>
 
-  <div class="card p-5 mb-6"><h3 class="font-bold mb-3" style="color:var(--nv)">หมวดหมู่หนังสือ</h3>${catList}</div>
+  <div class="card p-5 mb-6"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามหมวดหมู่/เรื่อง</h3>${catList}</div>
 
   <div class="card overflow-hidden">
    <div class="p-4 flex gap-2 flex-wrap items-center border-b border-slate-100">
-    <h3 class="font-bold mr-auto" style="color:var(--nv)">ทะเบียนหนังสือทั้งหมด <span class="text-slate-400 font-normal text-sm">(${f.length} รายการ)</span></h3>
-    <input value="${esc(P.q)}" oninput="P.q=this.value;renderHome()" placeholder="🔍 ค้นหาเลขที่ / เรื่อง"
-     class="border border-slate-300 rounded-lg px-3 py-2 text-sm min-w-[200px]">
+    <h3 class="font-bold mr-auto" style="color:var(--nv)">ทะเบียนหนังสือ <span class="text-slate-400 font-normal text-sm">(${f.length}/${R.length})</span></h3>
+    <input value="${esc(P.q)}" oninput="P.q=this.value;renderHome()" placeholder="🔍 ค้นหาเลขที่ / เรื่อง" class="border border-slate-300 rounded-lg px-3 py-2 text-sm min-w-[190px]">
     <select onchange="P.fs=this.value;renderHome()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-     ${['','ดำเนินการ','แก้ไข','สำเร็จ','ยกเลิก'].map(s=>`<option value="${s}" ${P.fs===s?'selected':''}>${s||'ทุกสถานะ'}</option>`).join('')}</select>
+     ${['','ดำเนินการ','แก้ไข','สำเร็จ','ยกเลิก','ไม่ระบุ'].map(s=>`<option value="${s}" ${P.fs===s?'selected':''}>${s||'ทุกสถานะ'}</option>`).join('')}</select>
     <select onchange="P.ft=this.value;renderHome()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
      ${['','ปกติ','ใกล้ครบกำหนด','เกินกำหนด','เสร็จแล้ว'].map(s=>`<option value="${s}" ${P.ft===s?'selected':''}>${s||'ทุกสถานะเวลา'}</option>`).join('')}</select></div>
    <div class="overflow-auto"><table class="w-full text-sm">
-    <thead class="bg-slate-50 text-slate-600"><tr>
-     <th class="p-3 text-left">เลขที่</th><th class="p-3 text-left">เรื่อง</th><th class="p-3">เริ่ม</th>
-     <th class="p-3">ผ่านมา</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
+    <thead class="bg-slate-50 text-slate-600"><tr><th class="p-3 text-left">เลขที่</th><th class="p-3 text-left">เรื่อง</th>
+     <th class="p-3">เริ่ม</th><th class="p-3">ผ่านมา</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
      <th class="p-3">สถานะ</th><th class="p-3">เวลา</th><th class="p-3"></th></tr></thead><tbody>
     ${f.map(d=>`<tr class="border-t border-slate-100 hover:bg-blue-50/40 ${d.over>0?'bg-rose-50/40':''}">
-     <td class="p-3 font-mono font-semibold text-slate-700">${esc(d.no)}</td>
-     <td class="p-3"><div class="font-medium">${esc(d.subject)}</div>
-      <div class="text-xs text-slate-400">${esc(d.cat||'')} · ${esc(d.type||'')}</div></td>
+     <td class="p-3 font-mono font-semibold">${esc(d.no)}</td>
+     <td class="p-3"><div class="font-medium">${esc(d.subject)}</div><div class="text-xs text-slate-400">${esc(d.cat||'')} · ${esc(d.type||'')}</div></td>
      <td class="p-3 text-center text-slate-600">${esc(d.start)}</td>
-     <td class="p-3 text-center font-semibold">${d.days}</td>
-     <td class="p-3 text-center text-slate-400">${d.sla}</td>
-     <td class="p-3"><div class="flex items-center gap-1 justify-center">
-      ${STAGES.map(g=>`<span title="${g.c}" class="w-2.5 h-2.5 rounded-full ${dot(d.stages[g.k])}"></span>`).join('')}
+     <td class="p-3 text-center font-semibold">${d.days}</td><td class="p-3 text-center text-slate-400">${d.sla}</td>
+     <td class="p-3"><div class="flex items-center gap-1 justify-center">${STAGES.map(g2=>
+      `<span title="${g2.c}" class="w-2.5 h-2.5 rounded-full ${dot(d.stages[g2.k])}"></span>`).join('')}
       <span class="text-xs text-slate-400 ml-1">${done5(d)}/5</span></div></td>
-     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${sb(d.status)}">${esc(d.status||'ใหม่')}</span></td>
+     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${sb(d.status)}">${esc(d.status)}</span></td>
      <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over+' วัน':esc(d.timeState)}</span></td>
-     <td class="p-3 text-right"><button onclick="openTrack('${esc(d.no)}','${d.key}')" class="text-blue-700 font-medium hover:underline">ดูสถานะ →</button></td>
-    </tr>`).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-400">ไม่พบข้อมูล</td></tr>'}
+     <td class="p-3 text-right"><button onclick="openTrack('${esc(d.no)}','${d.key}')" class="text-blue-700 font-medium hover:underline">ดูสถานะ →</button></td></tr>`).join('')
+     ||'<tr><td colspan="9" class="p-10 text-center text-slate-400">ไม่พบข้อมูล</td></tr>'}
    </tbody></table></div></div>`;
 }
 function openTrackBox(){
@@ -235,81 +276,71 @@ function openTrackBox(){
    <p class="text-sm text-slate-500 mb-3">กรอกหมายเลขหนังสือ หรือสแกน QR บนหน้าปกแฟ้ม</p>
    <div class="flex gap-2"><input id="pq" class="border border-slate-300 rounded-lg px-3 py-2 flex-1" placeholder="เช่น 008"
     onkeydown="if(event.key==='Enter')document.getElementById('pgo').click()">
-   <button id="pgo" onclick="closeM();openTrack(document.getElementById('pq').value.trim(),'')"
-    class="blue text-white px-4 py-2 rounded-lg">ค้นหา</button></div>`);
+   <button id="pgo" onclick="closeM();openTrack(document.getElementById('pq').value.trim(),'')" class="blue text-white px-4 py-2 rounded-lg">ค้นหา</button></div>`);
   setTimeout(()=>{const e=document.getElementById('pq');if(e)e.focus()},100);
 }
-function goHome(){ history.replaceState({},'',location.pathname); clearInterval(S.timer);
-  show('home'); loadPublic(); clearInterval(P.t); P.t=setInterval(()=>{if(!document.hidden)loadPublic(true)},30000); }
+function goHome(){ history.replaceState({},'',location.pathname); clearInterval(S.timer); clearInterval(P.tt);
+  show('home'); loadPublic(); clearInterval(P.t); P.t=setInterval(()=>{if(!document.hidden)loadPublic()},30000); }
 
-/* ============ TRACK ============ */
+/* ═══ TRACK ═══ */
 function timeline(d){
   const cancel=d.status==='ยกเลิก';
   return STAGES.map((g,i)=>{const st=d.stages[g.k],on=st&&st.status==='ผ่าน';
    const cur=!on&&!cancel&&(i===0||(d.stages[STAGES[i-1].k]&&d.stages[STAGES[i-1].k].status==='ผ่าน'));
    return `<div class="flex gap-3"><div class="flex flex-col items-center">
-    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm
-     ${on?'bg-emerald-500 text-white':cur?'text-white pulse':'bg-slate-100 text-slate-400'}" ${cur?'style="background:var(--bl)"':''}>${on?'✓':g.i}</div>
+    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm ${on?'bg-emerald-500 text-white':cur?'text-white pulse':'bg-slate-100 text-slate-400'}" ${cur?'style="background:var(--bl)"':''}>${on?'✓':g.i}</div>
     ${i<4?`<div class="w-0.5 flex-1 my-1 ${on?'bg-emerald-400':'bg-slate-200'}"></div>`:''}</div>
    <div class="pb-6 flex-1"><div class="font-semibold ${cur?'text-blue-700':''}">${i+1}. ${g.c}
-     ${cur?'<span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full ml-1">อยู่ระหว่างดำเนินการ</span>':''}</div>
+    ${cur?'<span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full ml-1">อยู่ระหว่างดำเนินการ</span>':''}</div>
     <div class="text-sm text-slate-500">ผู้รับผิดชอบ: ${esc(d.owners[g.k]||'-')}</div>
     ${st?`<div class="text-xs text-slate-500 mt-0.5">${esc(st.status)} · ${esc(st.by)} · ${esc(st.at)}</div>
-      ${st.note?`<div class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 mt-1">📝 ${esc(st.note)}</div>`:''}`
-     :'<div class="text-xs text-slate-400 mt-0.5">รอดำเนินการ</div>'}</div></div>`}).join('');
+     ${st.note?`<div class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 mt-1">📝 ${esc(st.note)}</div>`:''}`
+    :'<div class="text-xs text-slate-400 mt-0.5">รอดำเนินการ</div>'}</div></div>`}).join('');
 }
 async function openTrack(no,k){
   if(!no) return;
   history.replaceState({},'',location.pathname+'?doc='+encodeURIComponent(no)+(k?'&k='+k:''));
-  show('track'); await loadTrack(no,k);
+  show('track'); clearInterval(P.t); await loadTrack(no,k);
   clearInterval(P.tt); P.tt=setInterval(()=>{if(!document.hidden)loadTrack(no,k)},10000);
 }
 async function loadTrack(no,k){
-  const r=await api({action:'track',no:no,k:k});
+  let r; try{ r=await api({action:'track',no:no,k:k}); }catch(e){ r={ok:false,error:e.message}; }
   if(!r.ok){ track.innerHTML=`<div class="card p-10 text-center mt-6"><div class="text-5xl mb-3">🔍</div>
-    <p class="text-slate-600">${esc(r.error)}</p>
-    <button onclick="goHome()" class="mt-4 blue text-white px-4 py-2 rounded-lg">กลับแดชบอร์ด</button></div>`; return; }
+   <p class="text-slate-600">${esc(r.error)}</p><button onclick="goHome()" class="mt-4 blue text-white px-4 py-2 rounded-lg">กลับแดชบอร์ด</button></div>`; return; }
   const d=r.doc, n=done5(d);
   track.innerHTML=`<button onclick="goHome()" class="text-sm text-slate-500 hover:underline my-3">← กลับแดชบอร์ด</button>
-   <div class="card p-5">
-    <div class="flex justify-between items-start gap-4 flex-wrap">
-     <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
-      <div class="text-3xl font-bold" style="color:var(--nv)">${esc(d.no)}</div>
-      <div class="font-medium mt-1">${esc(d.subject)}</div>
-      <div class="text-sm text-slate-500">${esc(d.type||'-')} · ${esc(d.cat||'-')} · เริ่ม ${esc(d.start)}${d.end?' · เสร็จ '+esc(d.end):''}</div>
-      <div class="mt-2 flex gap-2 flex-wrap">
-       <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status||'ใหม่')}</span>
-       <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
-     <div id="tqr" class="shrink-0"></div></div>
+   <div class="card p-5"><div class="flex justify-between items-start gap-4 flex-wrap">
+    <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
+     <div class="text-3xl font-bold" style="color:var(--nv)">${esc(d.no)}</div>
+     <div class="font-medium mt-1">${esc(d.subject)}</div>
+     <div class="text-sm text-slate-500">${esc(d.type||'-')} · ${esc(d.cat||'-')} · เริ่ม ${esc(d.start)}${d.end?' · เสร็จ '+esc(d.end):''}</div>
+     <div class="mt-2 flex gap-2 flex-wrap">
+      <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status)}</span>
+      <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
+    <div id="tqr" class="shrink-0"></div></div>
     <div class="grid grid-cols-3 gap-3 mt-5 text-center">
-     <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ดำเนินการมาแล้ว</div>
-      <div class="text-2xl font-bold text-blue-700">${d.days}</div><div class="text-xs text-slate-400">วัน</div></div>
-     <div class="bg-slate-50 rounded-xl py-3"><div class="text-xs text-slate-500">กำหนดแล้วเสร็จ</div>
-      <div class="text-2xl font-bold text-slate-700">${d.sla}</div><div class="text-xs text-slate-400">วัน</div></div>
-     <div class="${d.over>0?'bg-rose-50':'bg-emerald-50'} rounded-xl py-3"><div class="text-xs text-slate-500">เกินกำหนด</div>
-      <div class="text-2xl font-bold ${d.over>0?'text-rose-600':'text-emerald-600'}">${d.over}</div><div class="text-xs text-slate-400">วัน</div></div></div>
+     <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ดำเนินการมาแล้ว</div><div class="text-2xl font-bold text-blue-700">${d.days}</div><div class="text-xs text-slate-400">วัน</div></div>
+     <div class="bg-slate-50 rounded-xl py-3"><div class="text-xs text-slate-500">กำหนดแล้วเสร็จ</div><div class="text-2xl font-bold text-slate-700">${d.sla}</div><div class="text-xs text-slate-400">วัน</div></div>
+     <div class="${d.over>0?'bg-rose-50':'bg-emerald-50'} rounded-xl py-3"><div class="text-xs text-slate-500">เกินกำหนด</div><div class="text-2xl font-bold ${d.over>0?'text-rose-600':'text-emerald-600'}">${d.over}</div><div class="text-xs text-slate-400">วัน</div></div></div>
     <div class="mt-5"><div class="flex justify-between text-xs text-slate-500 mb-1"><span>ความคืบหน้า</span><span>${n}/5 ขั้นตอน</span></div>
-     <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-3 rounded-full transition-all"
-      style="width:${n/5*100}%;background:${d.over>0?'#e11d48':'#1d4ed8'}"></div></div></div></div>
+     <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-3 rounded-full" style="width:${n/5*100}%;background:${d.over>0?'#e11d48':'#1d4ed8'}"></div></div></div></div>
    <div class="card p-5 mt-4"><h3 class="font-bold mb-4" style="color:var(--nv)">ไทม์ไลน์การดำเนินงาน</h3>${timeline(d)}</div>
-   <div class="text-center text-xs text-slate-400 my-6">อัปเดตล่าสุด ${esc(d.updated||'-')} · หน้านี้รีเฟรชอัตโนมัติทุก 10 วินาที</div>`;
-  qrInto('tqr', trackURL(d.no,d.key), 96);
+   <div class="text-center text-xs text-slate-400 my-6">อัปเดตล่าสุด ${esc(d.updated||'-')} · รีเฟรชอัตโนมัติทุก 10 วินาที</div>`;
+  qrInto('tqr',trackURL(d.no,d.key),96);
 }
 
-/* ============ AUTH ============ */
+/* ═══ AUTH + ADMIN ═══ */
 function showLogin(){ show('login'); clearInterval(P.t); setTimeout(()=>u.focus(),80); }
 async function doLogin(){
   lerr.textContent='กำลังตรวจสอบ...';
-  const r=await api({action:'login',username:u.value.trim(),password:p.value});
-  if(!r.ok) return lerr.textContent=r.error;
-  S.user=r.user;S.token=r.token; sessionStorage.setItem('dt',JSON.stringify({u:r.user,t:r.token}));
-  enterApp(); if(r.user.must) myPwForm(true);
+  try{ const r=await api({action:'login',username:u.value.trim(),password:p.value});
+    if(!r.ok) return lerr.textContent=r.error;
+    S.user=r.user;S.token=r.token; sessionStorage.setItem('dt',JSON.stringify({u:r.user,t:r.token}));
+    enterApp(); if(r.user.must) myPwForm(true);
+  }catch(e){ lerr.textContent=e.message; }
 }
-function enterApp(){
-  show('app'); who.textContent=S.user.name; whorole.textContent=ROLE[S.user.role]||S.user.role;
-  menuRender(); load();
-  clearInterval(S.timer); S.timer=setInterval(()=>{if(!document.hidden)load(true)},25000);
-}
+function enterApp(){ show('app'); who.textContent=S.user.name; whorole.textContent=ROLE[S.user.role]||S.user.role;
+  menuRender(); load(); clearInterval(S.timer); S.timer=setInterval(()=>{if(!document.hidden)load(true)},25000); }
 function logout(){ sessionStorage.clear(); clearInterval(S.timer); S.token=null; goHome(); }
 function menuRender(){
   const m=[['dash','📊 ภาพรวม'],['docs','📚 ทะเบียนหนังสือ'],['mine','⭐ งานของฉัน'],['late','⏰ เกินกำหนด']];
@@ -320,10 +351,11 @@ function menuRender(){
 }
 function go(p){S.page=p;menuRender();render()}
 async function load(silent){
-  const r=await api({action:'list',token:S.token});
-  if(!r.ok){ if(!silent) alert(r.error); return logout(); }
-  S.rows=r.rows;S.users=r.users||[];S.nextNo=r.nextNo;S.user=r.me;
-  sync.textContent='ซิงก์ '+new Date().toLocaleTimeString('th-TH'); render();
+  try{ const r=await api({action:'list',token:S.token});
+    if(!r.ok){ if(!silent) alert(r.error); return logout(); }
+    S.rows=r.rows;S.users=r.users||[];S.kpi=r.kpi;S.nextNo=r.nextNo;S.user=r.me;
+    sync.textContent='ซิงก์ '+new Date().toLocaleTimeString('th-TH'); render();
+  }catch(e){ if(!silent) alert(e.message); }
 }
 function myPwForm(force){
   openM(`<h3 class="font-bold text-lg mb-1" style="color:var(--nv)">เปลี่ยนรหัสผ่าน</h3>
@@ -338,14 +370,11 @@ function myPwForm(force){
 async function saveMyPw(){
   if(np.value!==np2.value) return perr.textContent='รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน';
   const r=await api({action:'myPw',token:S.token,oldPw:op.value,newPw:np.value});
-  if(!r.ok) return perr.textContent=r.error;
-  closeM(); alert('เปลี่ยนรหัสผ่านเรียบร้อย'); load();
+  if(!r.ok) return perr.textContent=r.error; closeM(); alert('เปลี่ยนรหัสผ่านเรียบร้อย'); load();
 }
-
-/* ============ ADMIN VIEWS ============ */
 function render(){
-  ptitle.textContent={dash:'ภาพรวม',docs:'ทะเบียนหนังสือ',mine:'งานของฉัน',late:'เรื่องเกินกำหนด',
-   new:'เพิ่มเรื่องใหม่',qr:'พิมพ์ QR Code',admin:'จัดการผู้ใช้และสิทธิ์',tools:'ซ่อม/คำนวณใหม่',log:'ประวัติการใช้งาน'}[S.page];
+  ptitle.textContent={dash:'ภาพรวม',docs:'ทะเบียนหนังสือ',mine:'งานของฉัน',late:'เรื่องเกินกำหนด',new:'เพิ่มเรื่องใหม่',
+   qr:'พิมพ์ QR Code',admin:'จัดการผู้ใช้',tools:'ซ่อม/คำนวณใหม่',log:'ประวัติการใช้งาน'}[S.page];
   page.innerHTML={dash:vDash,docs:vDocs,mine:vMine,late:vLate,new:vNew,qr:vQR,admin:vAdmin,tools:vTools,log:vLog}[S.page]();
   if(S.page==='qr') S.rows.forEach(d=>qrInto('q_'+d.row,trackURL(d['หมายเลขหนังสือ'],d.key),120));
   if(S.page==='log') loadLog();
@@ -353,12 +382,14 @@ function render(){
 const myStage=()=>STAGES.filter(g=>g.r===S.user.role)[0];
 const canAct=(d,g)=>(S.user.role==='admin'||S.user.role===g.r)&&d['สถานะ']!=='ยกเลิก';
 function vDash(){
-  const c=s=>S.rows.filter(r=>r['สถานะ']===s).length;
-  const open=S.rows.filter(r=>['สำเร็จ','ยกเลิก'].indexOf(r['สถานะ'])<0), late=S.rows.filter(r=>r.over>0);
-  const kpi=[['ทั้งหมด',S.rows.length,'text-slate-700'],['ดำเนินการ',open.length,'text-blue-700'],
-   ['สำเร็จ',c('สำเร็จ'),'text-emerald-600'],['แก้ไข',c('แก้ไข'),'text-amber-600'],['เกินกำหนด',late.length,'text-rose-600']];
-  return `<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">${kpi.map(([l,v,cl])=>
-   `<div class="card p-4"><div class="text-sm text-slate-500">${l}</div><div class="text-3xl font-bold ${cl}">${v}</div></div>`).join('')}</div>
+  const K=S.kpi||{}, open=S.rows.filter(r=>['สำเร็จ','ยกเลิก'].indexOf(r['สถานะ'])<0), late=S.rows.filter(r=>r.over>0);
+  return `<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+   ${kpiCard('ทั้งหมด',K.total,'','text-slate-700','bg-slate-50','#e2e8f0')}
+   ${kpiCard('ต้องติดตาม',K.watch,'ยังไม่ปิด','text-amber-600','bg-amber-50','#fde68a')}
+   ${kpiCard('ดำเนินการ',K.running,'','text-blue-700','bg-blue-50','#bfdbfe')}
+   ${kpiCard('สำเร็จ',K.success,K.rate+'%','text-emerald-600','bg-emerald-50','#a7f3d0')}
+   ${kpiCard('ยกเลิก',K.cancel,'','text-slate-500','bg-slate-50','#e2e8f0')}
+   ${kpiCard('เกินกำหนด',K.over,'เร่งด่วน','text-rose-600','bg-rose-50','#fecdd3')}</div>
    <div class="grid md:grid-cols-2 gap-5">
     <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">⏰ ต้องเร่งดำเนินการ</h3>
      ${late.length?late.sort((a,b)=>b.over-a.over).slice(0,8).map(d=>`
@@ -369,7 +400,7 @@ function vDash(){
       :'<p class="text-sm text-emerald-600">✅ ไม่มีเรื่องเกินกำหนด</p>'}</div>
     <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">คิวค้างแต่ละขั้น</h3>
      ${STAGES.map((g,i)=>{const n=open.filter(d=>{const dn=d.stages[g.k]&&d.stages[g.k].status==='ผ่าน';
-       const pv=i===0||(d.stages[STAGES[i-1].k]&&d.stages[STAGES[i-1].k].status==='ผ่าน');return !dn&&pv}).length;
+      const pv=i===0||(d.stages[STAGES[i-1].k]&&d.stages[STAGES[i-1].k].status==='ผ่าน');return !dn&&pv}).length;
       return `<div class="flex justify-between text-sm border-b border-slate-100 py-2"><span>${g.i} ${g.c}</span>
        <b class="${n?'text-blue-700':'text-slate-300'}">${n}</b></div>`}).join('')}</div></div>`;
 }
@@ -382,12 +413,12 @@ function table(rows){
    ${rows.map(d=>`<tr class="border-t border-slate-100 hover:bg-blue-50/40 ${d.over>0?'bg-rose-50/40':''}">
     <td class="p-3 font-mono font-semibold">${esc(d['หมายเลขหนังสือ'])}</td>
     <td class="p-3"><div class="font-medium">${esc(d['เรื่อง'])}</div><div class="text-xs text-slate-400">${esc(d['หมวดหมู่']||'')}</div></td>
-    <td class="p-3 text-center">${esc(d['วันที่เริ่มงาน'])}</td>
-    <td class="p-3 text-center font-semibold">${d.days}</td><td class="p-3 text-center text-slate-400">${d.sla}</td>
+    <td class="p-3 text-center">${esc(d['วันที่เริ่มงาน'])}</td><td class="p-3 text-center font-semibold">${d.days}</td>
+    <td class="p-3 text-center text-slate-400">${d.sla}</td>
     <td class="p-3"><div class="flex gap-1 justify-center items-center">${STAGES.map(g=>
      `<span title="${g.c}" class="w-2.5 h-2.5 rounded-full ${dot(d.stages[g.k])}"></span>`).join('')}
      <span class="text-xs text-slate-400 ml-1">${done5(d)}/5</span></div></td>
-    <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${sb(d['สถานะ'])}">${esc(d['สถานะ']||'ใหม่')}</span></td>
+    <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${sb(d['สถานะ'])}">${esc(d['สถานะ']||'ไม่ระบุ')}</span></td>
     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over:esc(d.timeState)}</span></td>
     <td class="p-3 text-right whitespace-nowrap"><button onclick="qrModal(${d.row})" class="mr-2">🔳</button>
      <button onclick="detail(${d.row})" class="text-blue-700 font-medium hover:underline">เปิด</button></td></tr>`).join('')}
@@ -400,36 +431,29 @@ function vDocs(){
    <input value="${esc(S.q)}" oninput="S.q=this.value;render()" placeholder="🔍 ค้นหา" class="border border-slate-300 rounded-lg px-3 py-2 flex-1 min-w-[220px]">
    <select onchange="S.fs=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2">
     ${['','ดำเนินการ','แก้ไข','สำเร็จ','ยกเลิก'].map(s=>`<option value="${s}" ${S.fs===s?'selected':''}>${s||'ทุกสถานะ'}</option>`).join('')}</select>
-   <select onchange="S.ft=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2">
-    ${['','ปกติ','ใกล้ครบกำหนด','เกินกำหนด','เสร็จแล้ว'].map(s=>`<option value="${s}" ${S.ft===s?'selected':''}>${s||'ทุกสถานะเวลา'}</option>`).join('')}</select>
    <button onclick="exportCSV()" class="border border-slate-300 px-3 py-2 rounded-lg">⬇ CSV</button></div>${table(f)}`;
 }
 function vLate(){ const l=S.rows.filter(d=>d.over>0).sort((a,b)=>b.over-a.over);
-  const s=S.rows.filter(d=>d.timeState==='ใกล้ครบกำหนด');
-  return `<div class="mb-3 text-sm">🔴 เกินกำหนด <b>${l.length}</b> · 🟠 ใกล้ครบกำหนด <b>${s.length}</b></div>${table(l.concat(s))}`; }
+ return `<div class="mb-3 text-sm">🔴 เกินกำหนด <b>${l.length}</b> เรื่อง</div>${table(l)}`; }
 function vMine(){
   const g=myStage(); if(!g) return '<div class="card p-8 text-center text-slate-500">บทบาทของคุณดูข้อมูลได้ทั้งหมด</div>';
   const i=STAGES.indexOf(g);
   const q=S.rows.filter(d=>{ if(['สำเร็จ','ยกเลิก'].indexOf(d['สถานะ'])>=0) return false;
    const dn=d.stages[g.k]&&d.stages[g.k].status==='ผ่าน';
-   const pv=i===0||(d.stages[STAGES[i-1].k]&&d.stages[STAGES[i-1].k].status==='ผ่าน'); return !dn&&pv;})
-   .sort((a,b)=>b.over-a.over);
-  return `<div class="mb-4 text-sm text-slate-600">คิวงานที่รอ <b>${g.c}</b> · ${q.length} เรื่อง
-   ${q.filter(d=>d.over>0).length?`<span class="text-rose-600 font-semibold">(เกินกำหนด ${q.filter(d=>d.over>0).length})</span>`:''}</div>${table(q)}`;
+   const pv=i===0||(d.stages[STAGES[i-1].k]&&d.stages[STAGES[i-1].k].status==='ผ่าน'); return !dn&&pv;}).sort((a,b)=>b.over-a.over);
+  return `<div class="mb-4 text-sm text-slate-600">คิวงานที่รอ <b>${g.c}</b> · ${q.length} เรื่อง</div>${table(q)}`;
 }
-function vQR(){
-  return `<div class="noprint mb-4 flex justify-between items-center flex-wrap gap-2">
-   <p class="text-sm text-slate-600">สลิป QR ติดหน้าปกแฟ้ม — สแกนแล้วเห็นสถานะทันที</p>
-   <button onclick="window.print()" class="blue text-white px-4 py-2 rounded-lg text-sm">🖨 พิมพ์ทั้งหมด</button></div>
-   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">${S.rows.map(d=>`
-    <div class="card p-3 text-center"><div class="font-mono font-bold">${esc(d['หมายเลขหนังสือ'])}</div>
-     <div class="text-xs text-slate-500 h-8 overflow-hidden">${esc(d['เรื่อง'])}</div>
-     <div id="q_${d.row}" class="flex justify-center my-2"></div>
-     <div class="text-[10px] text-slate-400">สแกนเพื่อติดตามสถานะ</div></div>`).join('')}</div>`;
-}
+function vQR(){ return `<div class="noprint mb-4 flex justify-between items-center flex-wrap gap-2">
+  <p class="text-sm text-slate-600">สลิป QR ติดหน้าปกแฟ้ม</p>
+  <button onclick="window.print()" class="blue text-white px-4 py-2 rounded-lg text-sm">🖨 พิมพ์ทั้งหมด</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">${S.rows.map(d=>`<div class="card p-3 text-center">
+   <div class="font-mono font-bold">${esc(d['หมายเลขหนังสือ'])}</div>
+   <div class="text-xs text-slate-500 h-8 overflow-hidden">${esc(d['เรื่อง'])}</div>
+   <div id="q_${d.row}" class="flex justify-center my-2"></div>
+   <div class="text-[10px] text-slate-400">สแกนเพื่อติดตามสถานะ</div></div>`).join('')}</div>`; }
 function qrModal(row){
   const d=S.rows.filter(r=>r.row===row)[0], url=trackURL(d['หมายเลขหนังสือ'],d.key);
-  openM(`<div class="text-center"><h3 class="font-bold text-lg" style="color:var(--nv)">QR ติดตามหนังสือ ${esc(d['หมายเลขหนังสือ'])}</h3>
+  openM(`<div class="text-center"><h3 class="font-bold text-lg" style="color:var(--nv)">QR ติดตาม ${esc(d['หมายเลขหนังสือ'])}</h3>
    <p class="text-sm text-slate-500 mb-3">${esc(d['เรื่อง'])}</p><div id="mq" class="flex justify-center mb-3"></div>
    <input readonly value="${esc(url)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs text-center mb-3" onclick="this.select();document.execCommand('copy')">
    <div class="flex gap-2 justify-center"><button onclick="closeM()" class="border border-slate-300 px-4 py-2 rounded-lg">ปิด</button>
@@ -438,23 +462,20 @@ function qrModal(row){
 }
 function detail(row){
   const d=S.rows.filter(r=>r.row===row)[0];
-  openM(`<div class="flex justify-between items-start mb-4">
-   <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
-    <h3 class="text-xl font-bold" style="color:var(--nv)">${esc(d['หมายเลขหนังสือ'])} · ${esc(d['เรื่อง'])}</h3>
-    <div class="text-sm text-slate-500">เริ่ม ${esc(d['วันที่เริ่มงาน'])}${d['วันที่งานสำเร็จ']?' · เสร็จ '+esc(d['วันที่งานสำเร็จ']):''}</div>
-    <div class="mt-2 flex gap-2 flex-wrap">
-     <span class="px-2 py-0.5 rounded-full text-xs border ${sb(d['สถานะ'])}">${esc(d['สถานะ'])}</span>
-     <span class="px-2 py-0.5 rounded-full text-xs border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}</span>
-     <span class="px-2 py-0.5 rounded-full text-xs bg-slate-50 border border-slate-200">${d.days} วัน / กำหนด ${d.sla} วัน</span></div></div>
+  openM(`<div class="flex justify-between items-start mb-4"><div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
+   <h3 class="text-xl font-bold" style="color:var(--nv)">${esc(d['หมายเลขหนังสือ'])} · ${esc(d['เรื่อง'])}</h3>
+   <div class="mt-2 flex gap-2 flex-wrap"><span class="px-2 py-0.5 rounded-full text-xs border ${sb(d['สถานะ'])}">${esc(d['สถานะ'])}</span>
+    <span class="px-2 py-0.5 rounded-full text-xs border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}</span>
+    <span class="px-2 py-0.5 rounded-full text-xs bg-slate-50 border border-slate-200">${d.days} วัน / กำหนด ${d.sla} วัน</span></div></div>
    <button onclick="closeM()" class="text-2xl text-slate-400">&times;</button></div>
    <div class="space-y-3">${STAGES.map((g,i)=>{const st=d.stages[g.k];
     return `<div class="border rounded-xl p-4 ${canAct(d,g)?'border-blue-200 bg-blue-50/40':'border-slate-200'}">
-     <div class="flex justify-between items-center gap-3">
-      <div><span class="w-2.5 h-2.5 inline-block rounded-full ${dot(st)} mr-2"></span><b>${i+1}. ${g.c}</b>
-       <div class="text-xs text-slate-500 ml-5">${st?`${esc(st.status)} · ${esc(st.by)} · ${esc(st.at)}${st.note?' · '+esc(st.note):''}`:'ยังไม่ดำเนินการ'}</div>
-       <div class="text-xs text-slate-400 ml-5">ผู้รับผิดชอบ: ${esc(d[g.c]||'-')}</div></div>
+     <div class="flex justify-between items-center gap-3"><div>
+      <span class="w-2.5 h-2.5 inline-block rounded-full ${dot(st)} mr-2"></span><b>${i+1}. ${g.c}</b>
+      <div class="text-xs text-slate-500 ml-5">${st?`${esc(st.status)} · ${esc(st.by)} · ${esc(st.at)}${st.note?' · '+esc(st.note):''}`:'ยังไม่ดำเนินการ'}</div>
+      <div class="text-xs text-slate-400 ml-5">ผู้รับผิดชอบ: ${esc(d[g.c]||'-')}</div></div>
       ${canAct(d,g)?`<button onclick="actForm(${row},'${g.k}')" class="blue text-white text-sm px-3 py-1.5 rounded-lg shrink-0">บันทึกผล</button>`
-       :'<span class="text-xs text-slate-400 shrink-0">🔒 ไม่มีสิทธิ์</span>'}</div></div>`}).join('')}</div>
+       :'<span class="text-xs text-slate-400 shrink-0">🔒</span>'}</div></div>`}).join('')}</div>
    <div class="mt-5 pt-4 border-t border-slate-200 flex gap-2 flex-wrap">
     <button onclick="qrModal(${row})" class="border border-slate-300 px-3 py-1.5 rounded-lg text-sm">🔳 QR</button>
     ${S.user.role==='admin'?`<button onclick="editForm(${row})" class="border border-slate-300 px-3 py-1.5 rounded-lg text-sm">✏️ แก้ไข</button>
@@ -463,15 +484,13 @@ function detail(row){
 function actForm(row,k){
   const g=STAGES.filter(x=>x.k===k)[0];
   openM(`<h3 class="font-bold text-lg mb-1" style="color:var(--nv)">บันทึกผล: ${g.c}</h3>
-   <p class="text-sm text-slate-500 mb-4">ดำเนินการในนาม <b>${esc(S.user.name)}</b></p>
+   <p class="text-sm text-slate-500 mb-4">ในนาม <b>${esc(S.user.name)}</b></p>
    <label class="text-sm">ผู้รับผิดชอบ/หน่วยงาน</label>
    <input id="ow" value="${esc(S.user.unit||S.user.name)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
    <label class="text-sm">ผลการพิจารณา</label>
    <select id="stt" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3"><option>ผ่าน</option>
     <option>กำลังดำเนินการ</option><option>ตีกลับแก้ไข</option>${['dean','admin'].indexOf(S.user.role)>=0?'<option>ยกเลิก</option>':''}</select>
-   <label class="text-sm">หมายเหตุ (เจ้าของเรื่องจะเห็น)</label>
-   <textarea id="nt" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-2"></textarea>
-   <p class="text-xs text-slate-500 mb-3">💡 เมื่อคณบดี "ผ่าน" ระบบจะบันทึกวันที่งานสำเร็จและหยุดนับวันอัตโนมัติ</p>
+   <label class="text-sm">หมายเหตุ</label><textarea id="nt" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3"></textarea>
    <div class="flex gap-2 justify-end"><button onclick="closeM()" class="border border-slate-300 px-4 py-2 rounded-lg">ยกเลิก</button>
    <button onclick="saveStage(${row},'${k}')" class="blue text-white px-4 py-2 rounded-lg">บันทึก</button></div>`);
 }
@@ -482,10 +501,8 @@ async function saveStage(row,k){
 function editForm(row){
   const d=S.rows.filter(x=>x.row===row)[0];
   const F=['วันที่เริ่มงาน','วันที่งานสำเร็จ','หมายเลขหนังสือ','เรื่อง','ประเภท','หมวดหมู่','กำหนดเสร็จ (วัน)','สถานะ','หมายเหตุ'];
-  openM(`<h3 class="font-bold text-lg mb-1" style="color:var(--nv)">แก้ไขข้อมูล</h3>
-   <p class="text-xs text-slate-500 mb-3">ระยะเวลา/เกินกำหนด/สถานะเวลา ระบบคำนวณให้อัตโนมัติ</p>
-   ${F.map(f=>`<label class="text-sm">${f}</label><input data-f="${f}" value="${esc(d[f])}"
-    class="ef w-full border border-slate-300 rounded-lg px-3 py-2 mb-2" placeholder="${f.indexOf('วันที่')>=0?'dd/mm/yyyy':''}">`).join('')}
+  openM(`<h3 class="font-bold text-lg mb-3" style="color:var(--nv)">แก้ไขข้อมูล</h3>
+   ${F.map(f=>`<label class="text-sm">${f}</label><input data-f="${f}" value="${esc(d[f])}" class="ef w-full border border-slate-300 rounded-lg px-3 py-2 mb-2">`).join('')}
    <div class="flex gap-2 justify-end mt-3"><button onclick="closeM()" class="border border-slate-300 px-4 py-2 rounded-lg">ปิด</button>
    <button onclick="saveEdit(${row})" class="blue text-white px-4 py-2 rounded-lg">บันทึก</button></div>`);
 }
@@ -506,8 +523,7 @@ function vNew(){
     <div><label class="text-sm">หมายเลขหนังสือ</label><input id="n_no" value="${S.nextNo||''}" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
     <div><label class="text-sm">วันที่เริ่มงาน</label><input id="n_dt" type="date" value="${iso}" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
     <div><label class="text-sm">ประเภท</label><select id="n_tp" class="w-full border border-slate-300 rounded-lg px-3 py-2"><option>ภายใน</option><option>ภายนอก</option></select></div>
-    <div><label class="text-sm">หมวดหมู่</label><select id="n_ct" onchange="n_sla.value=SLAMAP[this.value]||7" class="w-full border border-slate-300 rounded-lg px-3 py-2">
-     ${CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+    <div><label class="text-sm">หมวดหมู่</label><select id="n_ct" onchange="n_sla.value=SLAMAP[this.value]||7" class="w-full border border-slate-300 rounded-lg px-3 py-2">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
     <div><label class="text-sm">กำหนดแล้วเสร็จ (วัน)</label><input id="n_sla" type="number" value="7" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
     <div class="md:col-span-2"><label class="text-sm">เรื่อง</label><input id="n_sj" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
     <div class="md:col-span-2"><label class="text-sm">หมายเหตุ</label><textarea id="n_rm" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2"></textarea></div></div>
@@ -517,45 +533,32 @@ async function createDoc(){
   if(!n_sj.value.trim()) return alert('กรุณากรอกชื่อเรื่อง');
   const dt=n_dt.value?n_dt.value.split('-').reverse().join('/'):'';
   const r=await api({action:'create',token:S.token,data:{'หมายเลขหนังสือ':n_no.value.trim(),'วันที่เริ่มงาน':dt,
-   'เรื่อง':n_sj.value,'ประเภท':n_tp.value,'หมวดหมู่':n_ct.value,'กำหนดเสร็จ (วัน)':n_sla.value,
-   'หมายเหตุ':n_rm.value,'ผู้รับ':S.user.unit}});
+   'เรื่อง':n_sj.value,'ประเภท':n_tp.value,'หมวดหมู่':n_ct.value,'กำหนดเสร็จ (วัน)':n_sla.value,'หมายเหตุ':n_rm.value,'ผู้รับ':S.user.unit}});
   if(!r.ok) return alert(r.error);
   openM(`<div class="text-center"><div class="text-4xl mb-2">✅</div>
    <h3 class="font-bold text-lg" style="color:var(--nv)">บันทึกสำเร็จ · เลขที่ ${esc(r.no)}</h3>
-   <p class="text-sm text-slate-500 mb-3">กำหนดแล้วเสร็จ ${r.sla} วัน · พิมพ์ QR ติดหน้าปกแฟ้ม</p>
-   <div id="mq" class="flex justify-center mb-3"></div>
+   <p class="text-sm text-slate-500 mb-3">กำหนดแล้วเสร็จ ${r.sla} วัน</p><div id="mq" class="flex justify-center mb-3"></div>
    <div class="flex gap-2 justify-center noprint"><button onclick="window.print()" class="border border-slate-300 px-4 py-2 rounded-lg">🖨 พิมพ์</button>
    <button onclick="closeM();go('docs')" class="blue text-white px-4 py-2 rounded-lg">ไปทะเบียนหนังสือ</button></div></div>`);
   qrInto('mq',trackURL(r.no,r.key),200); load();
 }
-function vTools(){
-  return `<div class="card p-6 max-w-2xl"><h3 class="font-bold mb-2" style="color:var(--nv)">🛠 ซ่อมข้อมูลและคำนวณใหม่</h3>
-   <p class="text-sm text-slate-600 mb-3">ใช้เมื่อมีการย้าย/แทรก/ลบแถวในชีต ระบบจะ:</p>
-   <ul class="text-sm text-slate-600 list-disc ml-5 space-y-1 mb-4">
-    <li>ล้างสูตรและ #REF! ที่ค้างในคอลัมน์ระยะเวลา</li>
-    <li>แปลงวันที่ที่เป็นข้อความให้เป็นวันที่จริง (รองรับ พ.ศ.)</li>
-    <li>คำนวณ ระยะเวลา / เกินกำหนด / สถานะเวลา ใหม่ทั้งตาราง</li>
-    <li>หยุดนับวันให้เรื่องที่ปิดแล้วโดยเติมวันที่งานสำเร็จ</li></ul>
-   <button onclick="repair()" class="blue text-white px-5 py-2.5 rounded-lg">เริ่มซ่อมและคำนวณใหม่</button>
-   <p id="rmsg" class="text-sm text-emerald-700 mt-3"></p></div>`;
-}
+function vTools(){ return `<div class="card p-6 max-w-2xl"><h3 class="font-bold mb-2" style="color:var(--nv)">🛠 ซ่อมข้อมูลและคำนวณใหม่</h3>
+  <p class="text-sm text-slate-600 mb-4">ล้างสูตร/#REF! · แปลงวันที่ · คำนวณระยะเวลาและวันเกินกำหนดใหม่ทั้งตาราง</p>
+  <button onclick="repair()" class="blue text-white px-5 py-2.5 rounded-lg">เริ่มดำเนินการ</button>
+  <p id="rmsg" class="text-sm text-emerald-700 mt-3"></p></div>`; }
 async function repair(){ rmsg.textContent='กำลังดำเนินการ...';
   const r=await api({action:'repair',token:S.token}); rmsg.textContent=r.ok?'✅ '+r.msg:'❌ '+r.error; load(); }
 function vAdmin(){
   return `<div class="card overflow-auto"><div class="p-4 flex justify-between items-center flex-wrap gap-2">
-   <div><h3 class="font-bold" style="color:var(--nv)">จัดการผู้ใช้และสิทธิ์</h3>
-    <p class="text-xs text-slate-500">เพิ่ม/ลบ/รีเซ็ตรหัสผ่านได้จากหน้านี้ ไม่ต้องแตะ Google Sheets</p></div>
+   <h3 class="font-bold" style="color:var(--nv)">จัดการผู้ใช้และสิทธิ์</h3>
    <button onclick="userForm()" class="blue text-white px-3 py-1.5 rounded-lg text-sm">➕ เพิ่มผู้ใช้</button></div>
-   <table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-3 text-left">ผู้ใช้</th>
-    <th class="p-3 text-left">ชื่อ-สกุล</th><th class="p-3">บทบาท</th><th class="p-3">สังกัด</th>
-    <th class="p-3">เข้าล่าสุด</th><th class="p-3">สถานะ</th><th class="p-3"></th></tr></thead><tbody>
-   ${S.users.map(u=>`<tr class="border-t border-slate-100">
-    <td class="p-3 font-mono">${esc(u.username)}${u.must?'<span class="ml-1 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 rounded">ต้องตั้งรหัสใหม่</span>':''}</td>
+   <table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-3 text-left">ผู้ใช้</th><th class="p-3 text-left">ชื่อ-สกุล</th>
+    <th class="p-3">บทบาท</th><th class="p-3">สังกัด</th><th class="p-3">เข้าล่าสุด</th><th class="p-3">สถานะ</th><th class="p-3"></th></tr></thead><tbody>
+   ${S.users.map(u=>`<tr class="border-t border-slate-100"><td class="p-3 font-mono">${esc(u.username)}</td>
     <td class="p-3">${esc(u.name)}</td><td class="p-3 text-center">${ROLE[u.role]||u.role}</td>
     <td class="p-3 text-center">${esc(u.unit)}</td><td class="p-3 text-center text-xs text-slate-500">${esc(u.last||'-')}</td>
     <td class="p-3 text-center">${u.active?'<span class="text-emerald-600">● ใช้งาน</span>':'<span class="text-rose-500">● ระงับ</span>'}</td>
-    <td class="p-3 text-right whitespace-nowrap">
-     <button onclick="resetPw(${u.row},'${esc(u.username)}')" class="text-blue-700 mr-2" title="รีเซ็ตรหัสผ่าน">🔑</button>
+    <td class="p-3 text-right whitespace-nowrap"><button onclick="resetPw(${u.row},'${esc(u.username)}')" class="text-blue-700 mr-2">🔑</button>
      <button onclick="toggleU(${u.row})" class="mr-2">${u.active?'⏸':'▶️'}</button>
      <button onclick="userForm(${u.row})" class="text-blue-700 mr-2">แก้ไข</button>
      <button onclick="delUser(${u.row})" class="text-rose-600">ลบ</button></td></tr>`).join('')}
@@ -569,11 +572,11 @@ function userForm(row){
     <div><label class="text-sm">ชื่อ-สกุล</label><input id="a_nm" value="${esc(u.name||'')}" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
     <div><label class="text-sm">บทบาท</label><select id="a_rl" class="w-full border border-slate-300 rounded-lg px-3 py-2">
      ${Object.keys(ROLE).map(k=>`<option value="${k}" ${u.role===k?'selected':''}>${ROLE[k]}</option>`).join('')}</select></div>
-    <div><label class="text-sm">สังกัด/กลุ่มงาน</label><input id="a_ut" value="${esc(u.unit||'')}" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
-    <div class="md:col-span-2"><label class="text-sm">${row?'ตั้งรหัสผ่านใหม่ (เว้นว่าง = ไม่เปลี่ยน)':'รหัสผ่านเริ่มต้น (เว้นว่าง = ระบบสุ่มให้)'}</label>
+    <div><label class="text-sm">สังกัด</label><input id="a_ut" value="${esc(u.unit||'')}" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div>
+    <div class="md:col-span-2"><label class="text-sm">${row?'ตั้งรหัสผ่านใหม่ (เว้นว่าง = ไม่เปลี่ยน)':'รหัสผ่านเริ่มต้น (เว้นว่าง = สุ่มให้)'}</label>
      <input id="a_pw" class="w-full border border-slate-300 rounded-lg px-3 py-2"></div></div>
    <label class="text-sm block mt-3"><input id="a_ac" type="checkbox" ${u.active?'checked':''}> เปิดใช้งานบัญชี</label>
-   <label class="text-sm block"><input id="a_fc" type="checkbox" checked> บังคับเปลี่ยนรหัสผ่านเมื่อเข้าครั้งแรก</label>
+   <label class="text-sm block"><input id="a_fc" type="checkbox" checked> บังคับเปลี่ยนรหัสผ่านครั้งแรก</label>
    <div class="flex gap-2 justify-end mt-4"><button onclick="closeM()" class="border border-slate-300 px-4 py-2 rounded-lg">ยกเลิก</button>
    <button onclick="saveUser(${row||0})" class="blue text-white px-4 py-2 rounded-lg">บันทึก</button></div>`);
 }
@@ -603,8 +606,7 @@ async function loadLog(){
    <tr><th class="p-3 text-left">เวลา</th><th class="p-3 text-left">ผู้ใช้</th><th class="p-3 text-left">การกระทำ</th>
    <th class="p-3">หนังสือ</th><th class="p-3 text-left">รายละเอียด</th></tr></thead><tbody>
    ${r.rows.map(x=>`<tr class="border-t border-slate-100"><td class="p-2">${esc(x[0])}</td><td class="p-2">${esc(x[1])}</td>
-   <td class="p-2">${esc(x[2])}</td><td class="p-2 text-center">${esc(x[3])}</td><td class="p-2">${esc(x[4])}</td></tr>`).join('')}
-   </tbody></table></div>`;
+   <td class="p-2">${esc(x[2])}</td><td class="p-2 text-center">${esc(x[3])}</td><td class="p-2">${esc(x[4])}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function exportCSV(){
   const cols=['หมายเลขหนังสือ','เรื่อง','ประเภท','หมวดหมู่','วันที่เริ่มงาน','วันที่งานสำเร็จ','สถานะ'];
@@ -614,15 +616,11 @@ function exportCSV(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='doctrack_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
 }
-
-/* ============ ROUTER ============ */
+/* ═══ ROUTER ═══ */
 (function(){
   const qs=new URLSearchParams(location.search);
   const no=BOOT.doc||qs.get('doc'), k=BOOT.k||qs.get('k')||'';
-  nav.classList.remove('hidden');
   if(no){ openTrack(no,k); return; }
-  const s=sessionStorage.getItem('dt');
-  if(s && qs.get('admin')==='1'){ const d=JSON.parse(s); S.user=d.u; S.token=d.t; enterApp(); return; }
   goHome();
 })();
 </script>
