@@ -20,7 +20,13 @@
  body.printing-cover>*:not(#coverSheet){display:none!important}
  body.printing-cover #coverSheet{display:block!important}
  @media print{ #coverSheet .qrbox svg,#coverSheet .qrbox img{margin:0 auto} }
+ /* ── สติกเกอร์ QR (เครื่องพิมพ์ความร้อนขนาดเล็ก) ── */
+ #labelSheet{display:none}
+ body.printing-label>*:not(#labelSheet){display:none!important}
+ body.printing-label #labelSheet{display:block!important}
+ @media print{ #labelSheet .qrbox svg,#labelSheet .qrbox img{margin:0 auto;display:block} body.printing-label{margin:0} }
 </style>
+<style id="labelPageStyle"></style>
 </head>
 <body>
 
@@ -88,6 +94,8 @@ const FALLBACK=[
 
 <!-- ══════════ ใบปะหน้า (แสดงเฉพาะตอนสั่งพิมพ์) ══════════ -->
 <div id="coverSheet"></div>
+<!-- ══════════ สติกเกอร์ QR ขนาดเล็ก (แสดงเฉพาะตอนสั่งพิมพ์) ══════════ -->
+<div id="labelSheet"></div>
 
 <script>
 /* ══════════ UTIL ══════════ */
@@ -396,8 +404,15 @@ function docCardHTML(d, standalone){
    <div class="mb-4"><div class="flex justify-between text-xs text-slate-500 mb-1"><span>ความคืบหน้า</span><span>${d.passed}/5 ขั้นตอน</span></div>
     <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-3 rounded-full" style="width:${d.passed/5*100}%;background:${d.over>0?'#e11d48':'#1d4ed8'}"></div></div></div>
    <h3 class="font-bold mb-3" style="color:var(--nv)">ไทม์ไลน์การเสนอหนังสือ</h3>${tl}
-   <div class="flex gap-2 flex-wrap mt-5 pt-4 border-t border-slate-100 noprint">
-    <button onclick="printCover('${esc(d.no)}')" class="text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🖨 พิมพ์ใบปะหน้า (QR)</button>
+   <div class="flex gap-2 flex-wrap items-center mt-5 pt-4 border-t border-slate-100 noprint">
+    <button onclick="printCover('${esc(d.no)}')" class="text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🖨 พิมพ์ใบปะหน้า A4 (QR)</button>
+    <select id="labelSize-${esc(d.no)}" class="text-sm border border-slate-300 rounded-lg px-2 py-2">
+     <option value="40x30">สติกเกอร์ 40×30 มม.</option>
+     <option value="50x30">สติกเกอร์ 50×30 มม.</option>
+     <option value="57x40" selected>สติกเกอร์ 57×40 มม.</option>
+     <option value="60x40">สติกเกอร์ 60×40 มม.</option>
+    </select>
+    <button onclick="printLabel('${esc(d.no)}', document.getElementById('labelSize-${esc(d.no)}').value)" class="text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🏷 พิมพ์สติกเกอร์ (QR)</button>
     <button id="copyBtn-${esc(d.no)}" onclick="copyLink('${esc(d.no)}')" class="text-sm border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-50">🔗 คัดลอกลิงก์ติดตาม</button>
    </div></div>`;
 }
@@ -450,6 +465,33 @@ function printCover(no){
   setTimeout(()=>window.print(),200);
 }
 window.addEventListener('afterprint',()=>document.body.classList.remove('printing-cover'));
+
+/* ══════════ สติกเกอร์ QR ขนาดเล็ก (เครื่องพิมพ์ความร้อน) ══════════
+   ทางเลือกแทนใบปะหน้า A4 — ประหยัดกระดาษ เหมาะติดหน้าแฟ้ม/ปกเอกสารจริง เพื่อสแกนติดตามได้ทันที
+   รองรับม้วนสติกเกอร์ความร้อนขนาดที่พบทั่วไป เลือกได้จาก dropdown ก่อนสั่งพิมพ์ */
+const LABEL_SIZES={'40x30':{w:40,h:30},'50x30':{w:50,h:30},'57x40':{w:57,h:40},'60x40':{w:60,h:40}};
+function printLabel(no, sizeKey){
+  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  const sz=LABEL_SIZES[sizeKey]||LABEL_SIZES['57x40'];
+  const url=trackLink(d.no);
+  const tiny=sz.w<=40;                              // ป้ายเล็กสุด (40×30) เหลือที่พอแค่ QR + เลขที่
+  const qrPx=Math.round(Math.min(sz.w,sz.h)*3.4);    // ขนาด QR เป็นพิกเซล ปรับตามพื้นที่ป้ายจริง
+  labelSheet.innerHTML=`<div style="width:${sz.w}mm;height:${sz.h}mm;box-sizing:border-box;padding:${tiny?'0.8mm':'1.2mm'};
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-family:'Sarabun',sans-serif;text-align:center;overflow:hidden">
+   <div class="qrbox" id="qrLabelBox" style="line-height:0"></div>
+   <div style="font-weight:700;font-family:monospace;font-size:${tiny?'7px':'9px'};margin-top:0.4mm;white-space:nowrap;line-height:1.1">${esc(d.no)}</div>
+   ${tiny?'':`<div style="font-size:6.5px;color:#334155;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:0.2mm;line-height:1.1">${esc(d.subject)}</div>`}
+  </div>`;
+  const box=document.getElementById('qrLabelBox'); box.innerHTML='';
+  new QRCode(box,{text:url,width:qrPx,height:qrPx,correctLevel:QRCode.CorrectLevel.L});
+  /* ตั้งขนาดกระดาษจริงให้เท่าตัวป้าย (ไม่ใช่ A4) ผ่าน @page — เครื่องพิมพ์ความร้อนส่วนใหญ่จะตัดกระดาษ
+     พอดีป้ายให้เองตามค่านี้ */
+  labelPageStyle.textContent=`@page{size:${sz.w}mm ${sz.h}mm;margin:0}`;
+  document.body.classList.add('printing-label');
+  setTimeout(()=>window.print(),200);
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing-label'));
 /* ══════════ คัดลอกลิงก์ติดตาม ══════════ */
 function copyLink(no){
   const url=trackLink(no), btn=document.getElementById('copyBtn-'+no);
