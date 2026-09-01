@@ -33,25 +33,20 @@ const slaOf = s => 3;
 /* 5 ขั้นตอนการเสนอหนังสือ */
 const STAGES=[{c:'ผู้รับ',i:'📥'},{c:'หัวหน้ากลุ่มงาน',i:'👤'},{c:'หัวหน้าสำนักงานเลขาคณบดี',i:'🗂'},
  {c:'ผู้บริหาร',i:'🧑‍💼'},{c:'คณบดี',i:'🎓'}];
-/* ข้อมูลสำรอง (ตรงกับชีตปัจจุบัน) ใช้เมื่อดึงออนไลน์ไม่ได้ — คอลัมน์สุดท้าย = จากฝ่าย/ส่วนงาน
-   (คอลัมน์ก่อนหน้า = ชื่อผู้รับเรื่อง) — ตั้งใจใส่สถานะ/ประเภทที่พิมพ์หลากหลายไว้ด้วย
-   (เช่น "อยู่ระหว่างดำเนินการ", "ประกาศ", "คำสั่ง") เพื่อสาธิตว่าระบบแสดงผลค่าที่พิมพ์นอกเหนือ
-   รายการหลักได้ทันที ไม่ตกหล่นจากกราฟสัดส่วน */
+/* ข้อมูลสำรอง (ตรงกับชีตปัจจุบัน) ใช้เมื่อดึงออนไลน์ไม่ได้ — คอลัมน์สุดท้าย = ชื่อผู้รับเรื่อง */
 const FALLBACK=[
-["17/8/2026","อว 0605.14/001","รับเรื่อง","ธุรการและงานเลขานุการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายบุคคล","คณบดี","สำเร็จ","ภายใน","17/8/2026","นางสาวพัชนี คำวงษา","ฝ่ายแผน"],
-["17/8/2026","อว 0605.14/002","ขอซื้อ","ธุรการและงานเลขานุการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิจัย","คณบดี","สำเร็จ","ประกาศ","18/8/2026","นางสาวพัชนี คำวงษา","พัสดุ"],
-["18/8/2026","อว 0605.14/003","ลากิจ","บุคคล","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิชาการการศึกษา","คณบดี","แก้ไข","ภายใน","","นางสาวเกศรินทร์ ภูผานี","บุคคล"],
-["18/8/2026","อว 0605.14/004","เดินทางไปราชการ","ธุรการและงานเลขานุการ","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายแผนและงบประมาณ","รักษาการคณบดี","สำเร็จ","ภายใน","18/8/2026","นางสาวพัชนี คำวงษา","การเงินบัญชี"],
-["18/8/2026","อว 0605.14/005","ขอความอนุเคราะห์ประชาสัมพันธ์","ธุรการและงานเลขานุการ","วิจัย","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","รักษาการคณบดี","สำเร็จ","ภายนอก","19/8/2026","นางสาวพัชนี คำวงษา","วิจัย/วิเทศน์"],
-["19/8/2026","อว 0605.14/006","โครงการ","ธุรการและงานเลขานุการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.งานโครงสร้างพื้นฐาน","รักษาการคณบดี","ยกเลิก","ภายนอก","19/8/2026","นางสาวพัชนี คำวงษา",""],
-["19/8/2026","อว 0605.14/007","กิจกรรม","บุคคล","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","","","ยกเลิก","ภายใน","19/8/2026","นางสาวเกศรินทร์ ภูผานี","บริการวิชาการ"],
-["19/8/2026","อว 0605.14/008","บันทึกข้อความ","ธุรการและงานเลขานุการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","","อยู่ระหว่างดำเนินการ","ภายใน","","นางสาวพัชนี คำวงษา","อาคารสถานที่"],
-["24/8/2026","อว 0605.14/009","วิจัย","ธุรการและงานเลขานุการ","วิจัย","หัวหน้าสำนักงานเลขาคณบดี","","","อยู่ระหว่างดำเนินการ","ประกาศ","","นางสาวพัชนี คำวงษา","วิจัย/วิเทศน์"],
-["25/8/2026","อว 0605.14/010","ขออนุมัติทุนวิจัย","บุคคล","วิจัย","","","","อยู่ระหว่างดำเนินการ","คำสั่ง","","นางสาวเกศรินทร์ ภูผานี","วิจัย/วิเทศน์"],
-["30/8/2026","อว 0605.14/011","การเงิน","บุคคล","","","","","แก้ไข","ภายใน","","นางสาวเกศรินทร์ ภูผานี","การเงินบัญชี"],
-["31/8/2026","อว 0605.14/012","ขออนุมัติใช้ห้องประชุม EN1-204","ธุรการและงานเลขานุการ","วิชาการ","","","","อยู่ระหว่างดำเนินการ","ภายนอก","","นางสาวพัชนี คำวงษา","วิชาการศึกษา"],
-["1/9/2026","อว 0605.14/013","ขอใช้สถานที่ห้องเรียน EN1-109","บุคคล","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","","","อยู่ระหว่างดำเนินการ","คำสั่ง","","นางสาวเกศรินทร์ ภูผานี","วิชาการศึกษา"],
-["1/9/2026","อว 0605.14/014","ขออนุมัติจัดซื้อจัดจ้าง","ธุรการและงานเลขานุการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.งานโครงสร้างพื้นฐาน","","อยู่ระหว่างดำเนินการ","ภายใน","","นางสาวพัชนี คำวงษา","อาคารสถานที่"]];
+["9/11/2025","001","รับเรื่อง","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายบุคคล","คณบดี","สำเร็จ","ภายใน","9/11/2025","นางสาวพัชนี คำวงษา"],
+["10/11/2025","002","ขอซื้อ","ธุรการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิจัย","คณบดี","สำเร็จ","ภายใน","10/11/2025","นางสาวพัชนี คำวงษา"],
+["11/11/2025","003","ลากิจ","บุคคล","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายวิชาการการศึกษา","คณบดี","แก้ไข","ภายใน","","นางสาวเกศรินทร์ ภูผานี"],
+["12/11/2025","004","เดินทางไปราชการ","ธุรการ","วิชาการ","หัวหน้าสำนักงานเลขาคณบดี","รองคณบดีฝ่ายแผนและงบประมาณ","รักษาการคณบดี","สำเร็จ","ภายใน","12/11/2025","นางสาวพัชนี คำวงษา"],
+["13/11/2025","005","ขอความอนุเคราะห์","ธุรการ","การเงิน","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","รักษาการคณบดี","สำเร็จ","ภายนอก","13/11/2025","นางสาวพัชนี คำวงษา"],
+["14/11/2025","006","โครงการ","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.งานโครงสร้างพื้นฐาน","รักษาการคณบดี","ยกเลิก","ภายนอก","14/11/2025","นางสาวพัชนี คำวงษา"],
+["15/11/2025","007","กิจกรรม","บุคคล","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.เทคโนโลยีสารสนเทศ","คณบดี","ยกเลิก","ภายใน","15/11/2025","นางสาวเกศรินทร์ ภูผานี"],
+["17/11/2025","008","บันทึกข้อความ","ธุรการ","แผนและงบประมาณ","หัวหน้าสำนักงานเลขาคณบดี","ผช.อาคารสถานที่","","ดำเนินการ","ภายใน","","นางสาวพัชนี คำวงษา"],
+["18/11/2025","009","วิจัย","ธุรการ","วิจัย","หัวหน้าสำนักงานเลขาคณบดี","","","ดำเนินการ","ภายใน","","นางสาวพัชนี คำวงษา"],
+["18/11/2025","010","วิชาการ","บุคคล","วิจัย","","","","ดำเนินการ","ภายใน","","นางสาวเกศรินทร์ ภูผานี"],
+["18/11/2025","011","การเงิน","บุคคล","","","","","ดำเนินการ","ภายใน","","นางสาวเกศรินทร์ ภูผานี"],
+["18/11/2025","012","ขออนุมัติ","ธุรการ","","","","","ดำเนินการ","ภายนอก","","นางสาวพัชนี คำวงษา"]];
 </script>
 
 <div id="warn" class="hidden noprint bg-amber-50 border-b border-amber-300 text-amber-900 text-sm px-4 py-2 text-center"></div>
@@ -65,7 +60,7 @@ const FALLBACK=[
   <div class="flex items-center gap-2">
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
     <span class="w-2 h-2 rounded-full bg-emerald-500 pulse"></span><span id="lsync"></span></span>
-   <a href="https://script.google.com/a/macros/msu.ac.th/s/AKfycbyFbawxUuHVzlOKIVLHVbPokDWWdwCXeaylUVwjcCis1JIywyPWCgrYy-GOBIQejioK/exec" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
+   <a href="https://script.google.com/a/macros/msu.ac.th/s/AKfycbxZ7Z52e0T3DZUEjBu9cNx_fhX_59Tzi-88UHReXgGh7zNnROuFve7vS4TNwvM3Qbau/exec" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
    <button onclick="loadData()" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔄 รีเฟรช</button>
    <button onclick="window.print()" class="full-dash text-sm blue text-white rounded-lg px-4 py-2 font-medium shadow-sm">🖨 พิมพ์รายงาน</button>
   </div></div></header>
@@ -95,21 +90,16 @@ const FALLBACK=[
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const openM=h=>{modalBody.innerHTML=h;modal.classList.remove('hidden')};
 const closeM=()=>modal.classList.add('hidden');
-/* ══════════ สีของ "สถานะ" — แบบไดนามิก ══════════
-   ไม่ผูกกับรายการคงที่: ถ้าผู้ดูแลพิมพ์สถานะอื่นนอกเหนือ 4 ค่าหลัก (เช่น "อยู่ระหว่างดำเนินการ"
-   แทน "ดำเนินการ") ระบบจะยังกำหนดสีให้เองโดยอัตโนมัติ (คงที่ต่อข้อความเดิมเสมอ ไม่สุ่มเปลี่ยนทุกครั้งที่โหลด)
-   และนับรวมในกราฟ/ตัวเลขสรุปทันที ไม่ตกหล่นเหมือนระบบเดิมที่ผูกกับรายการคงที่ */
-const STATUS_KNOWN={'สำเร็จ':'#10b981','ดำเนินการ':'#2563eb','แก้ไข':'#f59e0b','ยกเลิก':'#94a3b8','ไม่ระบุ':'#8b5cf6'};
-const STATUS_PALETTE=['#2563eb','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#f97316','#84cc16','#0ea5e9','#a855f7','#14b8a6'];
-function hashIdx(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h%STATUS_PALETTE.length;}
-const statusColor=s=>STATUS_KNOWN[s]||STATUS_PALETTE[hashIdx(s)];
-const statusIcon=s=>s==='สำเร็จ'?'🟢':s==='ยกเลิก'?'⚪':s==='แก้ไข'?'🟡':s==='ไม่ระบุ'?'❔':'🔵';
-const sb=s=>{const c=statusColor(s);return `style="background:${c}1a;color:${c};border-color:${c}66"`;};
+const SC={'สำเร็จ':{b:'bg-emerald-50 text-emerald-700 border-emerald-200',d:'#10b981'},
+ 'ดำเนินการ':{b:'bg-blue-50 text-blue-700 border-blue-200',d:'#2563eb'},
+ 'แก้ไข':{b:'bg-amber-50 text-amber-700 border-amber-200',d:'#f59e0b'},
+ 'ยกเลิก':{b:'bg-slate-100 text-slate-500 border-slate-200',d:'#94a3b8'},
+ 'ไม่ระบุ':{b:'bg-violet-50 text-violet-700 border-violet-200',d:'#8b5cf6'}};
 const TC={'เกินกำหนด':'bg-rose-50 text-rose-700 border-rose-200','ใกล้ครบกำหนด':'bg-orange-50 text-orange-700 border-orange-200',
  'ปกติ':'bg-emerald-50 text-emerald-700 border-emerald-200','เสร็จแล้ว':'bg-slate-50 text-slate-500 border-slate-200',
  'ยกเลิก':'bg-slate-50 text-slate-400 border-slate-200'};
 const TI={'เกินกำหนด':'🔴','ใกล้ครบกำหนด':'🟠','ปกติ':'🟢','เสร็จแล้ว':'✅','ยกเลิก':'—'};
-const tb=t=>TC[t]||TC['ปกติ'];
+const sb=s=>(SC[s]||SC['ไม่ระบุ']).b, tb=t=>TC[t]||TC['ปกติ'];
 const D0=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
 function parseDate(x){
   if(x instanceof Date) return isNaN(x)?null:x;
@@ -159,8 +149,7 @@ async function loadData(){
       (r.c||[]).forEach((c,i)=>{ o[cols[i]] = c ? (c.f!=null?c.f:c.v) : ''; }); return o; });
     const list=raw.filter(o=>String(o['หมายเลขหนังสือ']||'').trim())
       .map(o=>[o['วันที่เริ่มงาน'],o['หมายเลขหนังสือ'],o['เรื่อง'],o['ผู้รับ'],o['หัวหน้ากลุ่มงาน'],
-        o['หัวหน้าสำนักงานเลขาคณบดี'],o['ผู้บริหาร'],o['คณบดี'],o['สถานะ'],o['ประเภท'],
-        o['วันที่งานสำเร็จ/ส่งคืนหนังสือไปยังเจ้าของเรื่อง'],o['ชื่อผู้รับเรื่อง'],o['จากฝ่าย/ส่วนงาน']]);
+        o['หัวหน้าสำนักงานเลขาคณบดี'],o['ผู้บริหาร'],o['คณบดี'],o['สถานะ'],o['ประเภท'],o['วันที่งานสำเร็จ'],o['ชื่อผู้รับเรื่อง']]);
     if(!list.length) throw new Error('ไม่พบข้อมูลในชีต (ตรวจสอบชื่อหัวคอลัมน์ให้ตรงกับที่ระบบต้องการ)');
     build(list); warn.classList.add('hidden');
     live.classList.remove('hidden'); lsync.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
@@ -175,7 +164,7 @@ async function loadData(){
 /* ══════════ แปลงข้อมูล + คำนวณ KPI ══════════ */
 function build(list){
   const T=D0(new Date());
-  ROWS=list.map(a=>{
+  ROWS=list.map((a,i)=>{
     const owners={'ผู้รับ':a[3]||'','หัวหน้ากลุ่มงาน':a[4]||'','หัวหน้าสำนักงานเลขาคณบดี':a[5]||'',
       'ผู้บริหาร':a[6]||'','คณบดี':a[7]||''};
     const status=String(a[8]||'').trim()||'ไม่ระบุ';
@@ -192,17 +181,14 @@ function build(list){
       : nextStage ? 'รอ '+nextStage.c : 'รอสรุปปิดเรื่อง';
     return {no:String(a[1]).trim(), subject:a[2]||'-', owners:owners, status:status, type:a[9]||'-',
       start:sd, end:parseDate(a[10]), days:days, sla:sla, over:over, passed:passed, where:where, closed:closed,
-      recip:a[11]||'', dept:a[12]||'',
+      recip:a[11]||'', _seq:i,
       timeState: closed?(status==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':((sla-days)<=1?'ใกล้ครบกำหนด':'ปกติ'))};
-  }).sort((x,y)=>(dkey(y.start)-dkey(x.start))||((+y.no||0)-(+x.no||0)));   /* ใหม่ → เก่า */
+  }).sort((x,y)=> y._seq - x._seq);   /* เรื่องที่เพิ่มล่าสุด (แถวท้ายสุดของชีต) ขึ้นก่อนเสมอ ไม่ขึ้นกับวันที่เริ่มงาน */
 
   const c=s=>ROWS.filter(r=>r.status===s).length;
   const fin=ROWS.filter(r=>r.status==='สำเร็จ');
-  /* นับจำนวนแยกตามสถานะ "จริง" ที่พบในข้อมูล — ไม่ผูกกับรายการคงที่ ดังนั้นสถานะใดๆ ที่ถูกพิมพ์ไว้
-     ในชีต (แม้จะไม่ตรงกับ 4 ค่าหลักเป๊ะ เช่น "อยู่ระหว่างดำเนินการ") จะถูกนับรวมและแสดงผลทันที */
-  const statusCounts={}; ROWS.forEach(r=>{statusCounts[r.status]=(statusCounts[r.status]||0)+1;});
-  KPI={total:ROWS.length, statusCounts:statusCounts, success:c('สำเร็จ'), cancel:c('ยกเลิก'),
-    watch:ROWS.filter(r=>!r.closed).length, closedN:ROWS.filter(r=>r.closed).length,
+  KPI={total:ROWS.length, running:c('ดำเนินการ'), fixing:c('แก้ไข'), success:c('สำเร็จ'), cancel:c('ยกเลิก'),
+    unknown:c('ไม่ระบุ'), watch:ROWS.filter(r=>!r.closed).length, closedN:ROWS.filter(r=>r.closed).length,
     over:ROWS.filter(r=>r.over>0).length, soon:ROWS.filter(r=>r.timeState==='ใกล้ครบกำหนด').length,
     inside:ROWS.filter(r=>r.type==='ภายใน').length, outside:ROWS.filter(r=>r.type==='ภายนอก').length,
     avg:fin.length?Math.round(fin.reduce((a,b)=>a+(+b.days||0),0)/fin.length):0,
@@ -237,8 +223,7 @@ function render(){
      <p class="text-xs text-slate-500">คลิกที่แถวเพื่อดูไทม์ไลน์ว่าหนังสืออยู่ขั้นตอนใด</p></div>
     <input id="searchQ" value="${esc(Q)}" oninput="Q=this.value;render()" placeholder="🔍 ค้นหาเลขที่ / เรื่อง" class="border border-slate-300 rounded-lg px-3 py-2 text-sm min-w-[190px]">
     <select onchange="FS=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
-     ${[''].concat(Object.keys(K.statusCounts).sort((a,b)=>(K.statusCounts[b]-K.statusCounts[a])))
-       .map(s=>`<option value="${esc(s)}" ${FS===s?'selected':''}>${s?esc(s):'ทุกสถานะ'}</option>`).join('')}</select>
+     ${['','ดำเนินการ','แก้ไข','สำเร็จ','ยกเลิก'].map(s=>`<option value="${s}" ${FS===s?'selected':''}>${s||'ทุกสถานะ'}</option>`).join('')}</select>
     <select onchange="FT=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
      ${['','ปกติ','ใกล้ครบกำหนด','เกินกำหนด','เสร็จแล้ว'].map(s=>`<option value="${s}" ${FT===s?'selected':''}>${s||'ทุกสถานะเวลา'}</option>`).join('')}</select>
     <button onclick="exportCSV()" class="border border-slate-300 px-3 py-2 rounded-lg text-sm">⬇ CSV</button></div>
@@ -257,40 +242,33 @@ function render(){
       ${STAGES.map((g,i)=>`<span title="${g.c}" class="w-2.5 h-2.5 rounded-full ${i<d.passed?'bg-emerald-500':(i===d.passed&&!d.closed?'bg-blue-600 pulse':'bg-slate-200')}"></span>`).join('')}
       <span class="text-xs text-slate-400 ml-1">${d.passed}/5</span></div></td>
      <td class="p-3 text-xs ${d.closed?'text-slate-400':'text-blue-700 font-medium'}">${esc(d.where)}</td>
-     <td class="p-3 text-center"><span class="px-2 py-1 rounded-md text-[10px] leading-tight font-medium border inline-block max-w-[120px] whitespace-normal" ${sb(d.status)}>${esc(d.status)}</span></td>
+     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${sb(d.status)}">${esc(d.status)}</span></td>
      <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border whitespace-nowrap ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over+' วัน':esc(d.timeState)}</span></td>
      <td class="p-3 text-right"><span class="text-blue-700 font-medium whitespace-nowrap">ดูสถานะ →</span></td></tr>`).join('')
      ||'<tr><td colspan="10" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'}
    </tbody></table></div></div>`;
 
   /* ── KPI แถวย่อย ── */
-  /* การ์ดสถานะสร้างจากค่าที่ "พบจริง" ในข้อมูล (K.statusCounts) เรียงจากมากไปน้อย — ถ้ามีการพิมพ์
-     สถานะใหม่ในชีต จะมีการ์ดของสถานะนั้นโผล่มาเองทันทีโดยไม่ต้องแก้โค้ด ตามด้วยการ์ด "เกินกำหนด"
-     และ "เฉลี่ยปิดเรื่อง" ซึ่งเป็นตัวชี้วัดคำนวณเอง ไม่ใช่สถานะดิบจากชีต */
   const kpi=(l,v,s,c,bg,br)=>`<div class="rounded-2xl p-4 border ${bg}" style="border-color:${br}">
    <div class="text-[12px] text-slate-500">${l}</div><div class="text-3xl font-bold ${c}">${v}</div>
    <div class="text-[11px] text-slate-400 mt-0.5">${s}</div></div>`;
-  const statusEntries=Object.entries(K.statusCounts).sort((a,b)=>b[1]-a[1]);
-  const statusCards=statusEntries.map(([k,v])=>{
-    const clr=statusColor(k), pct=ROWS.length?Math.round(v/ROWS.length*100):0;
-    return `<div class="rounded-2xl p-4 border" style="background:${clr}0d;border-color:${clr}55">
-     <div class="text-[11px] text-slate-500 leading-tight break-words">${statusIcon(k)} ${esc(k)}</div>
-     <div class="text-3xl font-bold" style="color:${clr}">${v}</div>
-     <div class="text-[11px] text-slate-400 mt-0.5">${pct}% ของทั้งหมด</div></div>`;
-  }).join('');
-  const kpiRow=`<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">${statusCards}
+  const kpiRow=`<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
+   ${kpi('🔵 ดำเนินการ',K.running,'อยู่ระหว่างเสนอ','text-blue-700','bg-blue-50','#bfdbfe')}
+   ${kpi('🟡 ต้องแก้ไข',K.fixing,'ถูกตีกลับ','text-amber-600','bg-amber-50','#fde68a')}
+   ${kpi('🟢 สำเร็จ',K.success,K.rate+'% ของทั้งหมด','text-emerald-600','bg-emerald-50','#a7f3d0')}
+   ${kpi('⚪ ยกเลิก',K.cancel,'ยุติเรื่อง','text-slate-500','bg-slate-50','#e2e8f0')}
    ${kpi('🔴 เกินกำหนด',K.over,'ต้องเร่งรัด','text-rose-600','bg-rose-50','#fecdd3')}
    ${kpi('⏱ เฉลี่ยปิดเรื่อง',K.avg+' วัน','เฉพาะที่สำเร็จ','text-slate-700','bg-white','#e2e8f0')}</div>`;
 
-  /* ── โดนัทสถานะ (สร้างจากสถานะจริงในข้อมูลเช่นกัน) ── */
-  const t=ROWS.length||1;
-  let acc=0,g=[]; statusEntries.forEach(([k,v])=>{const a=acc,b=acc+(v||0)/t*100; g.push(statusColor(k)+' '+a+'% '+b+'%'); acc=b;});
+  /* ── โดนัทสถานะ ── */
+  const t=ROWS.length||1, seg=[['สำเร็จ',K.success],['ดำเนินการ',K.running],['แก้ไข',K.fixing],['ยกเลิก',K.cancel],['ไม่ระบุ',K.unknown]];
+  let acc=0,g=[]; seg.forEach(([k,v])=>{const a=acc,b=acc+(v||0)/t*100; if(v)g.push(SC[k].d+' '+a+'% '+b+'%'); acc=b;});
   const donut=`<div class="flex items-center gap-5">
    <div class="w-32 h-32 rounded-full shrink-0" style="background:conic-gradient(${g.join(',')||'#e2e8f0 0 100%'})">
     <div class="w-20 h-20 bg-white rounded-full m-6 flex flex-col items-center justify-center">
      <div class="text-xl font-bold" style="color:var(--nv)">${K.total}</div><div class="text-[10px] text-slate-500">เรื่อง</div></div></div>
-   <div class="flex-1">${statusEntries.map(([k,v])=>`<div class="flex items-center justify-between text-sm py-1">
-    <span class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:${statusColor(k)}"></span>${esc(k)}</span>
+   <div class="flex-1">${seg.filter(x=>x[1]).map(([k,v])=>`<div class="flex items-center justify-between text-sm py-1">
+    <span class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:${SC[k].d}"></span>${k}</span>
     <span><b>${v}</b> <span class="text-slate-400 text-xs">${Math.round(v/t*100)}%</span></span></div>`).join('')}</div></div>`;
 
   /* ── คิวค้างแต่ละขั้นตอน ── */
@@ -312,8 +290,8 @@ function render(){
     <div class="text-right shrink-0">${d.over>0?`<b class="text-rose-600">เกิน ${d.over} วัน</b>`:`<b class="text-blue-700">${d.days} วัน</b>`}
      <div class="text-xs text-slate-400">กำหนด ${d.sla} วัน</div></div></div>`).join('');
 
-  /* ── หมวดหมู่ฝ่ายงาน/หน่วยงาน (จากคอลัมน์ "จากฝ่าย/ส่วนงาน") ── */
-  const cat={}; ROWS.forEach(d=>{const k=String(d.dept||'').trim()||'ไม่ระบุฝ่ายงาน'; cat[k]=(cat[k]||0)+1;});
+  /* ── หมวดหมู่เรื่อง + ประเภท ── */
+  const cat={}; ROWS.forEach(d=>cat[d.subject]=(cat[d.subject]||0)+1);
   const catList=Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
    `<div class="flex items-center gap-2 text-sm py-1"><span class="w-36 truncate">${esc(k)}</span>
     <div class="flex-1 h-2 bg-slate-100 rounded-full"><div class="h-2 rounded-full" style="width:${v/ROWS.length*100}%;background:#60a5fa"></div></div>
@@ -335,7 +313,7 @@ function render(){
      <p class="text-xs text-slate-500 mb-2">🔴 เกินกำหนด ${K.over} · 🟠 ใกล้ครบกำหนด ${K.soon}</p>
      ${open.length?watchList:'<p class="text-sm text-emerald-600 py-6 text-center">✅ ปิดเรื่องครบทุกรายการ</p>'}</div></div>
    <div class="grid md:grid-cols-2 gap-5">
-    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามฝ่ายงาน/หน่วยงาน</h3>${catList}</div>
+    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามเรื่อง</h3>${catList}</div>
     <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามผู้รับเรื่อง</h3>${unitList}</div></div>`;
 
   /* คืนโฟกัส + ตำแหน่งเคอร์เซอร์ให้ช่องค้นหา เพื่อให้พิมพ์ต่อเนื่องได้โดยไม่ต้องคลิกใหม่ทุกตัวอักษร */
@@ -367,16 +345,11 @@ function docCardHTML(d, standalone){
      <div class="font-medium mt-1">${esc(d.subject)}</div>
      <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.end?' · เสร็จ '+fmt(d.end):''}</div>
      <div class="mt-2 flex gap-2 flex-wrap">
-      <span class="px-3 py-1 rounded-md text-xs leading-snug font-medium border inline-block max-w-[220px] whitespace-normal" ${sb(d.status)}>${esc(d.status)}</span>
+      <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status)}</span>
       <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
     ${standalone?'':'<button onclick="closeM()" class="text-3xl text-slate-400 leading-none">&times;</button>'}</div>
    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-sm">
     <b class="text-blue-800">ขั้นตอนปัจจุบัน:</b> ${esc(d.where)}</div>
-   <div class="grid grid-cols-2 gap-3 mb-5 text-sm">
-    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">ชื่อผู้รับเรื่อง</div><div class="font-semibold">${esc(d.recip||'-')}</div></div>
-    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">จากฝ่ายงาน/ส่วนงาน</div><div class="font-semibold">${esc(d.dept||'-')}</div></div>
-    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">ประเภท</div><div class="font-semibold">${esc(d.type)}</div></div>
-    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">วันที่งานสำเร็จ/ส่งคืนหนังสือ</div><div class="font-semibold">${d.end?esc(fmt(d.end)):'ยังไม่แล้วเสร็จ'}</div></div></div>
    <div class="grid grid-cols-3 gap-3 mb-5 text-center">
     <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ผ่านมา (วัน)</div><div class="text-2xl font-bold text-blue-700">${d.days===''?'-':d.days}</div><div class="text-xs text-slate-400">วัน</div></div>
     <div class="bg-slate-50 rounded-xl py-3"><div class="text-xs text-slate-500">กำหนดแล้วเสร็จ</div><div class="text-2xl font-bold text-slate-700">${d.sla}</div><div class="text-xs text-slate-400">วัน</div></div>
@@ -424,10 +397,8 @@ function printCover(no){
     <tr><td style="padding:5px 0;color:#64748b">เรื่อง</td><td style="padding:5px 0;font-weight:600">${esc(d.subject)}</td></tr>
     <tr><td style="padding:5px 0;color:#64748b">ประเภท</td><td style="padding:5px 0;font-weight:600">${esc(d.type)}</td></tr>
     <tr><td style="padding:5px 0;color:#64748b">ชื่อผู้รับเรื่อง</td><td style="padding:5px 0;font-weight:600">${esc(d.recip||'-')}</td></tr>
-    <tr><td style="padding:5px 0;color:#64748b">จากฝ่าย/ส่วนงาน</td><td style="padding:5px 0;font-weight:600">${esc(d.dept||'-')}</td></tr>
     <tr><td style="padding:5px 0;color:#64748b">ผู้รับ (ตำแหน่ง)</td><td style="padding:5px 0;font-weight:600">${esc(d.owners['ผู้รับ']||'-')}</td></tr>
-    <tr><td style="padding:5px 0;color:#64748b">กำหนดแล้วเสร็จ</td><td style="padding:5px 0;font-weight:600">${d.sla} วัน</td></tr>
-    <tr><td style="padding:5px 0;color:#64748b">วันที่งานสำเร็จ/ส่งคืนหนังสือ</td><td style="padding:5px 0;font-weight:600">${d.end?esc(fmt(d.end)):'ยังไม่แล้วเสร็จ'}</td></tr></table>
+    <tr><td style="padding:5px 0;color:#64748b">กำหนดแล้วเสร็จ</td><td style="padding:5px 0;font-weight:600">${d.sla} วัน</td></tr></table>
    <div class="qrbox" id="qrPrintBox" style="display:flex;justify-content:center;padding:12px 0"></div>
    <div style="text-align:center;font-size:11px;color:#475569;margin-top:6px">
     สแกน QR Code เพื่อติดตามสถานะแบบเรียลไทม์ด้วยสมาร์ทโฟน<br>
@@ -446,8 +417,8 @@ function copyLink(no){
   }).catch(()=>{ if(btn) btn.textContent='ลิงก์: '+url; });
 }
 function exportCSV(){
-  const head=['หมายเลขหนังสือ','เรื่อง','ชื่อผู้รับเรื่อง','จากฝ่าย/ส่วนงาน','ประเภท','วันที่เริ่มงาน','วันที่งานสำเร็จ/ส่งคืนหนังสือไปยังเจ้าของเรื่อง','สถานะ','ขั้นตอนปัจจุบัน','ผ่านมา (วัน)','กำหนด (วัน)','เกินกำหนด (วัน)','สถานะเวลา'];
-  const csv='\uFEFF'+[head.join(',')].concat(ROWS.map(d=>[d.no,d.subject,d.recip,d.dept,d.type,fmt(d.start),d.end?fmt(d.end):'',
+  const head=['หมายเลขหนังสือ','เรื่อง','ประเภท','วันที่เริ่มงาน','วันที่งานสำเร็จ','สถานะ','ขั้นตอนปัจจุบัน','ผ่านมา (วัน)','กำหนด (วัน)','เกินกำหนด (วัน)','สถานะเวลา'];
+  const csv='\uFEFF'+[head.join(',')].concat(ROWS.map(d=>[d.no,d.subject,d.type,fmt(d.start),d.end?fmt(d.end):'',
    d.status,d.where,d.days,d.sla,d.over,d.timeState].map(x=>`"${String(x??'')}"`).join(','))).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='doctrack_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
