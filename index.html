@@ -149,7 +149,7 @@ async function loadData(){
       (r.c||[]).forEach((c,i)=>{ o[cols[i]] = c ? (c.f!=null?c.f:c.v) : ''; }); return o; });
     const list=raw.filter(o=>String(o['หมายเลขหนังสือ']||'').trim())
       .map(o=>[o['วันที่เริ่มงาน'],o['หมายเลขหนังสือ'],o['เรื่อง'],o['ผู้รับ'],o['หัวหน้ากลุ่มงาน'],
-        o['หัวหน้าสำนักงานเลขาคณบดี'],o['ผู้บริหาร'],o['คณบดี'],o['สถานะ'],o['ประเภท'],o['วันที่งานสำเร็จ'],o['ชื่อผู้รับเรื่อง']]);
+        o['หัวหน้าสำนักงานเลขาคณบดี'],o['ผู้บริหาร'],o['คณบดี'],o['สถานะ'],o['ประเภท'],o['วันที่งานสำเร็จ/ส่งคืนหนังสือไปยังเจ้าของเรื่อง'],o['ชื่อผู้รับเรื่อง']]);
     if(!list.length) throw new Error('ไม่พบข้อมูลในชีต (ตรวจสอบชื่อหัวคอลัมน์ให้ตรงกับที่ระบบต้องการ)');
     build(list); warn.classList.add('hidden');
     live.classList.remove('hidden'); lsync.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
@@ -334,15 +334,15 @@ function docCardHTML(d, standalone){
     return `<div class="flex gap-3"><div class="flex flex-col items-center">
      <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm ${on?'bg-emerald-500 text-white':cur?'text-white pulse':'bg-slate-100 text-slate-400'}" ${cur?'style="background:var(--bl)"':''}>${on?'✓':g.i}</div>
      ${i<4?`<div class="w-0.5 flex-1 my-1 ${on?'bg-emerald-400':'bg-slate-200'}"></div>`:''}</div>
-     <div class="pb-5 flex-1"><div class="font-semibold ${cur?'text-blue-700':''}">${i+1}. ${g.c}
-      ${cur?'<span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full ml-1">อยู่ระหว่างดำเนินการ</span>':''}</div>
-      <div class="text-sm ${on?'text-slate-600':'text-slate-400'}">${on?'ผู้รับผิดชอบ: '+esc(owner):'ยังไม่ถึงขั้นตอนนี้'}</div></div></div>`;
+     <div class="pb-5 flex-1 min-w-0"><div class="font-semibold break-words ${cur?'text-blue-700':''}">${i+1}. ${g.c}
+      ${cur?'<span class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full ml-1 inline-block">อยู่ระหว่างดำเนินการ</span>':''}</div>
+      <div class="text-sm break-words ${on?'text-slate-600':'text-slate-400'}">${on?'ผู้รับผิดชอบ: '+esc(owner):'ยังไม่ถึงขั้นตอนนี้'}</div></div></div>`;
   }).join('');
   return `<div class="${standalone?'card p-5':''}">
    <div class="flex justify-between items-start gap-3 mb-4">
-    <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
-     <div class="text-3xl font-bold" style="color:var(--nv)">${esc(d.no)}</div>
-     <div class="font-medium mt-1">${esc(d.subject)}</div>
+    <div class="flex-1 min-w-0"><div class="text-xs text-slate-500">หนังสือเลขที่</div>
+     <div class="text-3xl font-bold break-words" style="color:var(--nv)">${esc(d.no)}</div>
+     <div class="font-medium mt-1 break-words">${esc(d.subject)}</div>
      <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}</div>
      <div class="mt-2 flex gap-2 flex-wrap">
       <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status)}</span>
