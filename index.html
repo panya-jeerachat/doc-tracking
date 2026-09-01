@@ -65,7 +65,7 @@ const FALLBACK=[
   <div class="flex items-center gap-2">
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
     <span class="w-2 h-2 rounded-full bg-emerald-500 pulse"></span><span id="lsync"></span></span>
-   <a href="https://script.google.com/a/macros/msu.ac.th/s/AKfycbwSCAGddiDbfaj15q7BqAPZTzRh7iU2d5r60TTrabPousbz9XHrt0iXufCTp8fDInN_/exec" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
+   <a href="https://script.google.com/a/macros/msu.ac.th/s/AKfycbyFbawxUuHVzlOKIVLHVbPokDWWdwCXeaylUVwjcCis1JIywyPWCgrYy-GOBIQejioK/exec" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
    <button onclick="loadData()" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔄 รีเฟรช</button>
    <button onclick="window.print()" class="full-dash text-sm blue text-white rounded-lg px-4 py-2 font-medium shadow-sm">🖨 พิมพ์รายงาน</button>
   </div></div></header>
@@ -257,7 +257,7 @@ function render(){
       ${STAGES.map((g,i)=>`<span title="${g.c}" class="w-2.5 h-2.5 rounded-full ${i<d.passed?'bg-emerald-500':(i===d.passed&&!d.closed?'bg-blue-600 pulse':'bg-slate-200')}"></span>`).join('')}
       <span class="text-xs text-slate-400 ml-1">${d.passed}/5</span></div></td>
      <td class="p-3 text-xs ${d.closed?'text-slate-400':'text-blue-700 font-medium'}">${esc(d.where)}</td>
-     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border" ${sb(d.status)}>${esc(d.status)}</span></td>
+     <td class="p-3 text-center"><span class="px-2 py-1 rounded-md text-[10px] leading-tight font-medium border inline-block max-w-[120px] whitespace-normal" ${sb(d.status)}>${esc(d.status)}</span></td>
      <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border whitespace-nowrap ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over+' วัน':esc(d.timeState)}</span></td>
      <td class="p-3 text-right"><span class="text-blue-700 font-medium whitespace-nowrap">ดูสถานะ →</span></td></tr>`).join('')
      ||'<tr><td colspan="10" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'}
@@ -274,7 +274,7 @@ function render(){
   const statusCards=statusEntries.map(([k,v])=>{
     const clr=statusColor(k), pct=ROWS.length?Math.round(v/ROWS.length*100):0;
     return `<div class="rounded-2xl p-4 border" style="background:${clr}0d;border-color:${clr}55">
-     <div class="text-[12px] text-slate-500">${statusIcon(k)} ${esc(k)}</div>
+     <div class="text-[11px] text-slate-500 leading-tight break-words">${statusIcon(k)} ${esc(k)}</div>
      <div class="text-3xl font-bold" style="color:${clr}">${v}</div>
      <div class="text-[11px] text-slate-400 mt-0.5">${pct}% ของทั้งหมด</div></div>`;
   }).join('');
@@ -367,7 +367,7 @@ function docCardHTML(d, standalone){
      <div class="font-medium mt-1">${esc(d.subject)}</div>
      <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.end?' · เสร็จ '+fmt(d.end):''}</div>
      <div class="mt-2 flex gap-2 flex-wrap">
-      <span class="px-3 py-1 rounded-full text-sm border" ${sb(d.status)}>${esc(d.status)}</span>
+      <span class="px-3 py-1 rounded-md text-xs leading-snug font-medium border inline-block max-w-[220px] whitespace-normal" ${sb(d.status)}>${esc(d.status)}</span>
       <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
     ${standalone?'':'<button onclick="closeM()" class="text-3xl text-slate-400 leading-none">&times;</button>'}</div>
    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-sm">
