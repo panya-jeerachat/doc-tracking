@@ -343,10 +343,11 @@ function docCardHTML(d, standalone){
     <div><div class="text-xs text-slate-500">หนังสือเลขที่</div>
      <div class="text-3xl font-bold" style="color:var(--nv)">${esc(d.no)}</div>
      <div class="font-medium mt-1">${esc(d.subject)}</div>
-     <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.end?' · เสร็จ '+fmt(d.end):''}</div>
+     <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}</div>
      <div class="mt-2 flex gap-2 flex-wrap">
       <span class="px-3 py-1 rounded-full text-sm border ${sb(d.status)}">${esc(d.status)}</span>
-      <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span></div></div>
+      <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span>
+      ${d.end?'<span class="px-3 py-1 rounded-full text-sm border bg-emerald-50 text-emerald-700 border-emerald-200">✅ ส่งคืนหนังสือ/งานสำเร็จเมื่อ '+esc(fmt(d.end))+'</span>':''}</div></div>
     ${standalone?'':'<button onclick="closeM()" class="text-3xl text-slate-400 leading-none">&times;</button>'}</div>
    <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-sm">
     <b class="text-blue-800">ขั้นตอนปัจจุบัน:</b> ${esc(d.where)}</div>
@@ -398,7 +399,8 @@ function printCover(no){
     <tr><td style="padding:5px 0;color:#64748b">ประเภท</td><td style="padding:5px 0;font-weight:600">${esc(d.type)}</td></tr>
     <tr><td style="padding:5px 0;color:#64748b">ชื่อผู้รับเรื่อง</td><td style="padding:5px 0;font-weight:600">${esc(d.recip||'-')}</td></tr>
     <tr><td style="padding:5px 0;color:#64748b">ผู้รับ (ตำแหน่ง)</td><td style="padding:5px 0;font-weight:600">${esc(d.owners['ผู้รับ']||'-')}</td></tr>
-    <tr><td style="padding:5px 0;color:#64748b">กำหนดแล้วเสร็จ</td><td style="padding:5px 0;font-weight:600">${d.sla} วัน</td></tr></table>
+    <tr><td style="padding:5px 0;color:#64748b">กำหนดแล้วเสร็จ</td><td style="padding:5px 0;font-weight:600">${d.sla} วัน</td></tr>
+    <tr><td style="padding:5px 0;color:#64748b">วันที่งานสำเร็จ/ส่งคืนหนังสือ</td><td style="padding:5px 0;font-weight:700;color:${d.end?'#047857':'#94a3b8'}">${d.end?'✅ '+esc(fmt(d.end)):'ยังไม่แล้วเสร็จ ณ วันที่พิมพ์'}</td></tr></table>
    <div class="qrbox" id="qrPrintBox" style="display:flex;justify-content:center;padding:12px 0"></div>
    <div style="text-align:center;font-size:11px;color:#475569;margin-top:6px">
     สแกน QR Code เพื่อติดตามสถานะแบบเรียลไทม์ด้วยสมาร์ทโฟน<br>
