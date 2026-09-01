@@ -99,6 +99,11 @@ const TC={'เกินกำหนด':'bg-rose-50 text-rose-700 border-rose-20
  'ปกติ':'bg-emerald-50 text-emerald-700 border-emerald-200','เสร็จแล้ว':'bg-slate-50 text-slate-500 border-slate-200',
  'ยกเลิก':'bg-slate-50 text-slate-400 border-slate-200'};
 const TI={'เกินกำหนด':'🔴','ใกล้ครบกำหนด':'🟠','ปกติ':'🟢','เสร็จแล้ว':'✅','ยกเลิก':'—'};
+/* ค่าสถานะรูปแบบยาว/แบบเก่าที่อาจพิมพ์ไว้ในชีตด้วยมือก่อนมีหน้าผู้ดูแล — แปลงให้เป็น
+   คำสั้นมาตรฐานเสมอ กันป้ายสถานะล้นกรอบและกันสีป้ายผิดเพี้ยนไปเป็น "ไม่ระบุ" */
+const STATUS_ALIAS={'อยู่ระหว่างดำเนินการ':'ดำเนินการ','กำลังดำเนินการ':'ดำเนินการ','รอดำเนินการ':'ดำเนินการ',
+ 'ดำเนินการอยู่':'ดำเนินการ','เสร็จสิ้น':'สำเร็จ','เสร็จเรียบร้อย':'สำเร็จ','ดำเนินการเสร็จสิ้น':'สำเร็จ',
+ 'ยกเลิกเรื่อง':'ยกเลิก','ตีกลับแก้ไข':'แก้ไข','รอแก้ไข':'แก้ไข'};
 const sb=s=>(SC[s]||SC['ไม่ระบุ']).b, tb=t=>TC[t]||TC['ปกติ'];
 const D0=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
 function parseDate(x){
@@ -167,7 +172,8 @@ function build(list){
   ROWS=list.map((a,i)=>{
     const owners={'ผู้รับ':a[3]||'','หัวหน้ากลุ่มงาน':a[4]||'','หัวหน้าสำนักงานเลขาคณบดี':a[5]||'',
       'ผู้บริหาร':a[6]||'','คณบดี':a[7]||''};
-    const status=String(a[8]||'').trim()||'ไม่ระบุ';
+    const rawStatus=String(a[8]||'').trim();
+    const status=STATUS_ALIAS[rawStatus] || rawStatus || 'ไม่ระบุ';
     const closed=(status==='สำเร็จ'||status==='ยกเลิก');
     const sd=parseDate(a[0]); let ed=parseDate(a[10]);
     if(!closed) ed=null;
@@ -242,8 +248,8 @@ function render(){
       ${STAGES.map((g,i)=>`<span title="${g.c}" class="w-2.5 h-2.5 rounded-full ${i<d.passed?'bg-emerald-500':(i===d.passed&&!d.closed?'bg-blue-600 pulse':'bg-slate-200')}"></span>`).join('')}
       <span class="text-xs text-slate-400 ml-1">${d.passed}/5</span></div></td>
      <td class="p-3 text-xs ${d.closed?'text-slate-400':'text-blue-700 font-medium'}">${esc(d.where)}</td>
-     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border ${sb(d.status)}">${esc(d.status)}</span></td>
-     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-xs border whitespace-nowrap ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over+' วัน':esc(d.timeState)}</span></td>
+     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-[11px] leading-tight whitespace-nowrap border ${sb(d.status)}">${esc(d.status)}</span></td>
+     <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-[11px] leading-tight whitespace-nowrap border ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over+' วัน':esc(d.timeState)}</span></td>
      <td class="p-3 text-right"><span class="text-blue-700 font-medium whitespace-nowrap">ดูสถานะ →</span></td></tr>`).join('')
      ||'<tr><td colspan="10" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'}
    </tbody></table></div></div>`;
