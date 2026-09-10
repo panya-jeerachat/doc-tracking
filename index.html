@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DocTrack | ระบบกำกับติดตามสถานะหนังสือภายในสำนักงานเลขานุการคณบดี คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</title>
+<title>DocTrack | ระบบกำกับติดตามสถานะหนังสือภายในสำนักงานเลขานุการคณบดี คณะวิศวกรรมศาสตร์ มมส.</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -65,13 +65,14 @@ const FALLBACK=[
 
 <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 noprint">
  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-  <div class="flex items-center gap-4">
-   <div class="flex items-center gap-3 cursor-pointer" onclick="if(!TRACK_NO)closeM()">
-    <div class="w-11 h-11 rounded-xl navy text-white flex items-center justify-center text-xl shadow">📑</div>
-    <div><div class="font-bold leading-tight text-[15px]" style="color:var(--nv)">ระบบกำกับติดตามสถานะหนังสือภายในสำนักงานเลขานุการคณบดี</div>
-     <div class="text-[11px] text-slate-500">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div></div>
+  <div class="flex items-center gap-3">
+   <a href="https://eng.msu.ac.th/" target="_blank" rel="noopener" class="shrink-0" title="ไปที่เว็บไซต์คณะวิศวกรรมศาสตร์ มมส.">
+    <img src="logo.png" alt="โลโก้ EN-MSU" class="h-12 w-auto" onerror="this.style.display='none'">
+   </a>
+   <div class="cursor-pointer" onclick="if(!TRACK_NO)closeM()">
+    <div class="font-bold leading-tight text-[15px]" style="color:var(--nv)">ระบบกำกับติดตามสถานะหนังสือภายในสำนักงานเลขานุการคณบดี</div>
+    <div class="text-[11px] text-slate-500">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div>
    </div>
-   <img src="logo.png" alt="โลโก้" class="h-12 w-auto" onerror="this.style.display='none'">
   </div>
   <div class="flex items-center gap-2">
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
@@ -95,7 +96,7 @@ const FALLBACK=[
 
 <footer class="border-t border-slate-200 bg-white noprint"><div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-slate-500">
  <div>งานสารบรรณ สำนักงานเลขานุการคณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div>
- <div class="mt-2 pt-2 border-t border-slate-100 text-slate-400">© 2569 คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคามภายในสำนักงานเลขานุการคณบดี</div>
+ <div class="mt-2 pt-2 border-t border-slate-100 text-slate-400">© 2569 คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div>
  <div class="text-slate-400">พัฒนาโดย นายปัญญา จีระฉัตร | นักวิชาการโสตทัศนศึกษา |
   <a href="mailto:panya.j@msu.ac.th" class="hover:text-blue-600 hover:underline">panya.j@msu.ac.th</a></div>
 </div></footer>
