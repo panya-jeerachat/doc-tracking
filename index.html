@@ -7,13 +7,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
- :root{--nv:#0f2d5c;--bl:#1d4ed8}
- body{font-family:'Sarabun',sans-serif;background:#f8fafc;color:#0f172a}
- .card{background:#fff;border:1px solid #e5e9f2;border-radius:16px;box-shadow:0 1px 3px rgba(15,45,92,.05)}
- .navy{background:var(--nv)}.blue{background:var(--bl)}
+ :root{--nv:#0369a1;--bl:#0ea5e9;--bl2:#38bdf8}
+ body{font-family:'Sarabun',sans-serif;background:#f0f9ff;color:#0f172a}
+ .card{background:#fff;border:1px solid #dbeafe;border-radius:16px;box-shadow:0 1px 3px rgba(3,105,161,.08)}
+ .navy{background:linear-gradient(135deg,#0284c7,#38bdf8)}.blue{background:linear-gradient(135deg,var(--bl),var(--bl2))}
  .pulse{animation:pl 2s infinite}@keyframes pl{0%,100%{opacity:1}50%{opacity:.35}}
  thead th{position:sticky;top:0;background:#f1f5f9;z-index:1}
- ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#c7d2e5;border-radius:9px}
+ ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#bae6fd;border-radius:9px}
  @media print{.noprint{display:none!important}body{background:#fff}}
  .track-mode .full-dash{display:none!important}
  #coverSheet{display:none}
@@ -67,7 +67,10 @@ const FALLBACK=[
  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
   <div class="flex items-center gap-3 cursor-pointer" onclick="if(!TRACK_NO)closeM()">
    <div class="w-11 h-11 rounded-xl navy text-white flex items-center justify-center text-xl shadow">📑</div>
-   <div><div class="font-bold leading-tight text-[15px]" style="color:var(--nv)">ระบบกำกับติดตามสถานะหนังสือ</div>
+   <div><div class="font-bold leading-tight text-[15px] flex items-center gap-2" style="color:var(--nv)">
+     <span>ระบบกำกับติดตามสถานะหนังสือ</span>
+     <img src="logo.png" alt="โลโก้" class="h-7 w-auto" onerror="this.style.display='none'">
+    </div>
     <div class="text-[11px] text-slate-500">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div></div></div>
   <div class="flex items-center gap-2">
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
@@ -268,7 +271,7 @@ function render(){
     <select onchange="FT=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
      ${['','ปกติ','ใกล้ครบกำหนด','เกินกำหนด','เสร็จแล้ว'].map(s=>`<option value="${s}" ${FT===s?'selected':''}>${s||'ทุกสถานะเวลา'}</option>`).join('')}</select>
     <button onclick="exportCSV()" class="border border-slate-300 px-3 py-2 rounded-lg text-sm">⬇ CSV</button></div>
-   <div class="overflow-auto max-h-[560px]"><table class="w-full text-sm">
+   <div class="overflow-auto max-h-[1120px]"><table class="w-full text-sm">
     <thead class="text-slate-600"><tr>
      <th class="p-3 text-left">เลขที่</th><th class="p-3 text-left">เรื่อง</th><th class="p-3">วันที่เริ่ม</th>
      <th class="p-3">ผ่านมา (วัน)</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
