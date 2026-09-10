@@ -147,7 +147,23 @@ function parseDate(x){
 const fmt=d=>d?String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear():'-';
 const dkey=d=>d?d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate():0;
 
-let ROWS=[], KPI={}, Q='', FS='', FT='';
+let ROWS=[], KPI={}, Q='', FS='', FT='', DF='', DT='';
+
+/* คำนวณตัวเลขสรุปทุกด้าน (ใช้ได้ทั้งกับ ROWS ทั้งหมด หรือกับชุดที่ถูกกรองแล้ว f)
+   แยกเป็นฟังก์ชันกลางเพื่อให้แดชบอร์ดคำนวณสรุปตามช่วงที่กรอง/ค้นหาอยู่ได้เสมอ ไม่ใช่แค่ภาพรวมทั้งหมด */
+function computeStats(rows){
+  const c=s=>rows.filter(r=>r.status===s).length;
+  const fin=rows.filter(r=>r.status==='สำเร็จ');
+  const finDone=fin.filter(r=>r.end);
+  const statusCounts={}; rows.forEach(r=>{statusCounts[r.status]=(statusCounts[r.status]||0)+1;});
+  return {total:rows.length, statusCounts:statusCounts, success:c('สำเร็จ'), cancel:c('ยกเลิก'),
+    watch:rows.filter(r=>!r.closed).length, closedN:rows.filter(r=>r.closed).length,
+    over:rows.filter(r=>r.over>0).length, soon:rows.filter(r=>r.timeState==='ใกล้ครบกำหนด').length,
+    inside:rows.filter(r=>r.type==='ภายใน').length, outside:rows.filter(r=>r.type==='ภายนอก').length,
+    avg:finDone.length?Math.round(finDone.reduce((a,b)=>a+(+b.days||0),0)/finDone.length):null,
+    avgN:finDone.length,
+    rate:rows.length?Math.round(c('สำเร็จ')/rows.length*100):0};
+}
 /* หน้าติดตามเฉพาะเรื่อง: เปิดผ่านลิงก์ ?no=หมายเลขหนังสือ (สแกนจาก QR ในใบปะหน้า) */
 const TRACK_NO=new URLSearchParams(location.search).get('no');
 if(TRACK_NO){ document.body.classList.add('track-mode'); trackView.classList.remove('hidden'); }
@@ -230,22 +246,9 @@ function build(list){
       timeState: closed?(status==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':((sla-days)<=1?'ใกล้ครบกำหนด':'ปกติ'))};
   }).sort((x,y)=> y._seq - x._seq);   /* เรื่องที่เพิ่มล่าสุด (แถวท้ายสุดของชีต) ขึ้นก่อนเสมอ ไม่ขึ้นกับวันที่เริ่มงาน */
 
-  const c=s=>ROWS.filter(r=>r.status===s).length;
-  const fin=ROWS.filter(r=>r.status==='สำเร็จ');
-  /* เฉลี่ยปิดเรื่อง: นับเฉพาะเรื่องที่ "สำเร็จ" และมีวันที่งานสำเร็จบันทึกไว้จริงเท่านั้น — เดิมถ้าเรื่อง
-     ถูกทำเครื่องหมายสำเร็จแต่ยังไม่ได้กรอกวันที่งานสำเร็จ โค้ดจะถือว่าปิดเรื่อง "วันนี้" โดยปริยาย ทำให้
-     days กลายเป็น 0 (ถ้าวันที่เริ่มงานตรงกับวันนี้พอดี) แล้วดึงค่าเฉลี่ยลงมาผิดเพี้ยน จึงต้องกรองออก */
-  const finDone=fin.filter(r=>r.end);
-  /* นับจำนวนแยกตามสถานะ "จริง" ที่พบในข้อมูล (หลังผ่าน STATUS_ALIAS แล้ว) — ไม่ผูกกับรายการคงที่
-     ดังนั้นสถานะใดๆ ที่ไม่รู้จักก็ยังถูกนับรวมและแสดงผลทันทีโดยไม่ตกหล่น */
-  const statusCounts={}; ROWS.forEach(r=>{statusCounts[r.status]=(statusCounts[r.status]||0)+1;});
-  KPI={total:ROWS.length, statusCounts:statusCounts, success:c('สำเร็จ'), cancel:c('ยกเลิก'),
-    watch:ROWS.filter(r=>!r.closed).length, closedN:ROWS.filter(r=>r.closed).length,
-    over:ROWS.filter(r=>r.over>0).length, soon:ROWS.filter(r=>r.timeState==='ใกล้ครบกำหนด').length,
-    inside:ROWS.filter(r=>r.type==='ภายใน').length, outside:ROWS.filter(r=>r.type==='ภายนอก').length,
-    avg:finDone.length?Math.round(finDone.reduce((a,b)=>a+(+b.days||0),0)/finDone.length):null,
-    avgN:finDone.length,
-    rate:ROWS.length?Math.round(c('สำเร็จ')/ROWS.length*100):0};
+  /* KPI ที่นี่ = ภาพรวม "ทั้งหมด" ไม่ผูกกับตัวกรอง ใช้สำหรับสร้างตัวเลือกในดรอปดาวน์ (เช่น รายชื่อสถานะ
+     ทั้งหมดที่เคยพบ) เท่านั้น — ตัวเลขสรุปที่แสดงจริงบนหน้าจอคำนวณใหม่ทุกครั้งจาก computeStats(f) ใน render() */
+  KPI=computeStats(ROWS);
   if(TRACK_NO){ renderTrackView(); } else { render(); }
 }
 /* ══════════ RENDER ══════════ */
@@ -257,16 +260,20 @@ function render(){
   const _selStart=_isSearch?_active.selectionStart:null;
   const _selEnd=_isSearch?_active.selectionEnd:null;
   const K=KPI;
-  hero.innerHTML=[['หนังสือทั้งหมด',K.total,'รายการในทะเบียน','text-white'],
-   ['ต้องกำกับติดตาม',K.watch,'ยังไม่ปิดเรื่อง','text-amber-300'],
-   ['ดำเนินการเสร็จสิ้น',K.success,'คิดเป็น '+K.rate+'% ของทั้งหมด','text-emerald-300'],
-   ['ยกเลิก',K.cancel,'ยุติเรื่องแล้ว','text-slate-300']]
+  const f=ROWS.filter(d=>(!Q||(d.no+' '+d.subject+' '+d.where).toLowerCase().includes(Q.toLowerCase()))
+   &&(!FS||d.status===FS)&&(!FT||d.timeState===FT)
+   &&(!DF||!d.start||D0(d.start)>=D0(new Date(DF+'T00:00:00')))
+   &&(!DT||!d.start||D0(d.start)<=D0(new Date(DT+'T00:00:00'))));
+  const FK=computeStats(f);   /* สรุปทุกด้านคำนวณจากชุดที่กรอง/ค้นหา/เลือกช่วงวันที่อยู่ ณ ตอนนี้เสมอ */
+  const rangeOn = !!(DF||DT||Q||FS||FT);
+
+  hero.innerHTML=[['หนังสือทั้งหมด',FK.total,rangeOn?'ตามเงื่อนไขที่เลือก (ทั้งหมด '+K.total+')':'รายการในทะเบียน','text-white'],
+   ['ต้องกำกับติดตาม',FK.watch,'ยังไม่ปิดเรื่อง','text-amber-300'],
+   ['ดำเนินการเสร็จสิ้น',FK.success,'คิดเป็น '+FK.rate+'% ของที่เลือก','text-emerald-300'],
+   ['ยกเลิก',FK.cancel,'ยุติเรื่องแล้ว','text-slate-300']]
    .map(([l,v,s,c])=>`<div class="bg-white/10 border border-white/15 rounded-xl p-4">
     <div class="text-[12px] text-blue-200">${l}</div><div class="text-4xl font-bold ${c}">${v}</div>
     <div class="text-[11px] text-blue-200/80 mt-1">${s}</div></div>`).join('');
-
-  const f=ROWS.filter(d=>(!Q||(d.no+' '+d.subject+' '+d.where).toLowerCase().includes(Q.toLowerCase()))
-   &&(!FS||d.status===FS)&&(!FT||d.timeState===FT));
 
   /* ── ตารางทะเบียนหนังสือ (บนสุด เรียงล่าสุดก่อน) ── */
   const table=`<div class="card overflow-hidden mb-6">
@@ -280,6 +287,11 @@ function render(){
        .map(s=>`<option value="${esc(s)}" ${FS===s?'selected':''}>${s?esc(s):'ทุกสถานะ'}</option>`).join('')}</select>
     <select onchange="FT=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
      ${['','ปกติ','ใกล้ครบกำหนด','เกินกำหนด','เสร็จแล้ว'].map(s=>`<option value="${s}" ${FT===s?'selected':''}>${s||'ทุกสถานะเวลา'}</option>`).join('')}</select>
+    <span class="flex items-center gap-1 border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-slate-500">
+     📅<input type="date" value="${esc(DF)}" onchange="DF=this.value;render()" class="border-0 focus:outline-none text-slate-700" title="ตั้งแต่วันที่เริ่มงาน">
+     <span class="text-slate-300">–</span>
+     <input type="date" value="${esc(DT)}" onchange="DT=this.value;render()" class="border-0 focus:outline-none text-slate-700" title="ถึงวันที่เริ่มงาน"></span>
+    ${(Q||FS||FT||DF||DT)?'<button onclick="Q=\'\';FS=\'\';FT=\'\';DF=\'\';DT=\'\';render()" class="border border-slate-300 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50">✕ ล้างตัวกรอง</button>':''}
     <button onclick="exportCSV()" class="border border-slate-300 px-3 py-2 rounded-lg text-sm">⬇ CSV</button></div>
    <div class="overflow-auto max-h-[1120px]"><table class="w-full text-sm">
     <thead class="text-slate-600"><tr>
@@ -302,48 +314,48 @@ function render(){
      ||'<tr><td colspan="10" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'}
    </tbody></table></div></div>`;
 
-  /* ── KPI แถวย่อย ── */
-  /* การ์ดสถานะสร้างจากค่าที่ "พบจริง" ในข้อมูล (K.statusCounts) เรียงจากมากไปน้อย — ถ้ามีการพิมพ์
+  /* ── KPI แถวย่อย (คำนวณจากชุดที่กรอง/เลือกช่วงวันที่อยู่ f/FK เสมอ — ไม่ใช่ภาพรวมทั้งหมด) ── */
+  /* การ์ดสถานะสร้างจากค่าที่ "พบจริง" ในชุดที่กรองอยู่ (FK.statusCounts) เรียงจากมากไปน้อย — ถ้ามีการพิมพ์
      สถานะใหม่ในชีต จะมีการ์ดของสถานะนั้นโผล่มาเองทันทีโดยไม่ต้องแก้โค้ด ตามด้วยการ์ด "เกินกำหนด"
      และ "เฉลี่ยปิดเรื่อง" ซึ่งเป็นตัวชี้วัดคำนวณเอง ไม่ใช่สถานะดิบจากชีต */
   const kpi=(l,v,s,c,bg,br)=>`<div class="rounded-2xl p-4 border ${bg}" style="border-color:${br}">
    <div class="text-[12px] text-slate-500">${l}</div><div class="text-3xl font-bold ${c}">${v}</div>
    <div class="text-[11px] text-slate-400 mt-0.5">${s}</div></div>`;
-  const statusEntries=Object.entries(K.statusCounts).sort((a,b)=>b[1]-a[1]);
-  const statusCards=statusEntries.map(([k,v])=>{
-    const clr=statusColor(k), pct=ROWS.length?Math.round(v/ROWS.length*100):0;
+  const fStatusEntries=Object.entries(FK.statusCounts).sort((a,b)=>b[1]-a[1]);
+  const statusCards=fStatusEntries.map(([k,v])=>{
+    const clr=statusColor(k), pct=f.length?Math.round(v/f.length*100):0;
     return `<div class="rounded-2xl p-4 border" style="background:${clr}0d;border-color:${clr}55">
      <div class="text-[11px] text-slate-500 leading-tight break-words">${statusIcon(k)} ${esc(k)}</div>
      <div class="text-3xl font-bold" style="color:${clr}">${v}</div>
-     <div class="text-[11px] text-slate-400 mt-0.5">${pct}% ของทั้งหมด</div></div>`;
+     <div class="text-[11px] text-slate-400 mt-0.5">${pct}% ของที่เลือก</div></div>`;
   }).join('');
   const kpiRow=`<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">${statusCards}
-   ${kpi('🔴 เกินกำหนด',K.over,'ต้องเร่งรัด','text-rose-600','bg-rose-50','#fecdd3')}
-   ${kpi('⏱ เฉลี่ยปิดเรื่อง', K.avg===null?'-':K.avg+' วัน', K.avg===null?'ยังไม่มีข้อมูลวันที่งานสำเร็จ':'เฉพาะที่สำเร็จ ('+K.avgN+' เรื่อง)','text-slate-700','bg-white','#e2e8f0')}</div>`;
+   ${kpi('🔴 เกินกำหนด',FK.over,'ต้องเร่งรัด','text-rose-600','bg-rose-50','#fecdd3')}
+   ${kpi('⏱ เฉลี่ยปิดเรื่อง', FK.avg===null?'-':FK.avg+' วัน', FK.avg===null?'ยังไม่มีข้อมูลวันที่งานสำเร็จ':'เฉพาะที่สำเร็จ ('+FK.avgN+' เรื่อง)','text-slate-700','bg-white','#e2e8f0')}</div>`;
 
-  /* ── โดนัทสถานะ (สร้างจากสถานะจริงในข้อมูลเช่นกัน) ── */
-  const t=ROWS.length||1;
-  let acc=0,g=[]; statusEntries.forEach(([k,v])=>{const a=acc,b=acc+(v||0)/t*100; g.push(statusColor(k)+' '+a+'% '+b+'%'); acc=b;});
+  /* ── โดนัทสถานะ (คำนวณจากชุดที่กรอง/เลือกช่วงวันที่อยู่ f ไม่ใช่ ROWS ทั้งหมด — จะได้สรุปย้อนหลังตามช่วงที่ค้นได้จริง) ── */
+  const t=f.length||1;
+  let acc=0,g=[]; fStatusEntries.forEach(([k,v])=>{const a=acc,b=acc+(v||0)/t*100; g.push(statusColor(k)+' '+a+'% '+b+'%'); acc=b;});
   const donut=`<div class="flex items-center gap-5">
    <div class="w-32 h-32 rounded-full shrink-0" style="background:conic-gradient(${g.join(',')||'#e2e8f0 0 100%'})">
     <div class="w-20 h-20 bg-white rounded-full m-6 flex flex-col items-center justify-center">
-     <div class="text-xl font-bold" style="color:var(--nv)">${K.total}</div><div class="text-[10px] text-slate-500">เรื่อง</div></div></div>
-   <div class="flex-1">${statusEntries.map(([k,v])=>`<div class="flex items-center justify-between text-sm py-1">
+     <div class="text-xl font-bold" style="color:var(--nv)">${FK.total}</div><div class="text-[10px] text-slate-500">เรื่อง</div></div></div>
+   <div class="flex-1">${fStatusEntries.map(([k,v])=>`<div class="flex items-center justify-between text-sm py-1">
     <span class="flex items-center gap-2"><span class="w-3 h-3 rounded" style="background:${statusColor(k)}"></span>${esc(k)}</span>
     <span><b>${v}</b> <span class="text-slate-400 text-xs">${Math.round(v/t*100)}%</span></span></div>`).join('')}</div></div>`;
 
-  /* ── คิวค้างแต่ละขั้นตอน ── */
-  const open=ROWS.filter(d=>!d.closed);
+  /* ── คิวค้างแต่ละขั้นตอน (เฉพาะชุดที่กรองอยู่ f) ── */
+  const open=f.filter(d=>!d.closed);
   const funnel=STAGES.map((s,i)=>{
-    const done=ROWS.filter(d=>d.passed>i).length;
+    const done=f.filter(d=>d.passed>i).length;
     const queue=open.filter(d=>d.passed===i).length;
-    const pc=ROWS.length?Math.round(done/ROWS.length*100):0;
+    const pc=f.length?Math.round(done/f.length*100):0;
     return `<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span>${s.i} ${s.c}</span>
-     <span class="text-slate-500">ผ่าน ${done}/${ROWS.length}${queue?` · <b class="text-blue-700">คิว ${queue}</b>`:''}</span></div>
+     <span class="text-slate-500">ผ่าน ${done}/${f.length}${queue?` · <b class="text-blue-700">คิว ${queue}</b>`:''}</span></div>
      <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-2.5 rounded-full" style="width:${pc}%;background:var(--bl)"></div></div></div>`;
   }).join('');
 
-  /* ── รายการต้องกำกับติดตาม ── */
+  /* ── รายการต้องกำกับติดตาม (เฉพาะชุดที่กรองอยู่) ── */
   const watchList=open.slice().sort((a,b)=>b.over-a.over).map(d=>
    `<div class="flex justify-between items-center border-b border-slate-100 py-2 text-sm cursor-pointer hover:bg-blue-50/50 px-1 rounded" onclick="detail('${d.no}')">
     <div><b class="font-mono text-slate-700">${esc(d.no)}</b> ${esc(d.subject)}
@@ -351,31 +363,38 @@ function render(){
     <div class="text-right shrink-0">${d.over>0?`<b class="text-rose-600">เกิน ${d.over} วัน</b>`:`<b class="text-blue-700">${d.days} วัน</b>`}
      <div class="text-xs text-slate-400">กำหนด ${d.sla} วัน</div></div></div>`).join('');
 
-  /* ── หมวดหมู่ฝ่ายงาน/หน่วยงาน (จากคอลัมน์ "จากฝ่าย/ส่วนงาน") ── */
-  const cat={}; ROWS.forEach(d=>{const k=String(d.dept||'').trim()||'ไม่ระบุฝ่ายงาน'; cat[k]=(cat[k]||0)+1;});
+  /* ── หมวดหมู่ฝ่ายงาน/หน่วยงาน + ประเภทหนังสือ (จากชุดที่กรองอยู่ f) ── */
+  const cat={}; f.forEach(d=>{const k=String(d.dept||'').trim()||'ไม่ระบุฝ่ายงาน'; cat[k]=(cat[k]||0)+1;});
   const catList=Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
    `<div class="flex items-center gap-2 text-sm py-1"><span class="w-36 truncate">${esc(k)}</span>
-    <div class="flex-1 h-2 bg-slate-100 rounded-full"><div class="h-2 rounded-full" style="width:${v/ROWS.length*100}%;background:#60a5fa"></div></div>
+    <div class="flex-1 h-2 bg-slate-100 rounded-full"><div class="h-2 rounded-full" style="width:${v/f.length*100}%;background:#60a5fa"></div></div>
     <b class="w-6 text-right">${v}</b></div>`).join('');
-  const unitCount={}; ROWS.forEach(d=>{const u=d.owners['ผู้รับ']||'-';unitCount[u]=(unitCount[u]||0)+1});
+  const unitCount={}; f.forEach(d=>{const u=d.owners['ผู้รับ']||'-';unitCount[u]=(unitCount[u]||0)+1});
   const unitList=Object.entries(unitCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
    `<div class="flex justify-between text-sm border-b border-slate-100 py-2"><span>👥 ${esc(k)}</span><b>${v} เรื่อง</b></div>`).join('');
+  const typeCount={}; f.forEach(d=>{const k=String(d.type||'').trim()||'ไม่ระบุประเภท'; typeCount[k]=(typeCount[k]||0)+1;});
+  const typeList=Object.entries(typeCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+   `<div class="flex items-center gap-2 text-sm py-1"><span class="w-28 truncate">${esc(k)}</span>
+    <div class="flex-1 h-2 bg-slate-100 rounded-full"><div class="h-2 rounded-full" style="width:${v/f.length*100}%;background:#a78bfa"></div></div>
+    <b class="w-6 text-right">${v}</b></div>`).join('');
+  const rangeNote = rangeOn ? '<span class="text-xs font-normal text-blue-600 ml-2">(ตามเงื่อนไขที่เลือกอยู่ · '+f.length+'/'+ROWS.length+' เรื่อง)</span>' : '';
 
   body.innerHTML = table + kpiRow + `
    <div class="grid md:grid-cols-3 gap-5 mb-6">
-    <div class="card p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">สัดส่วนสถานะหนังสือ</h3>${donut}
+    <div class="card p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">สัดส่วนสถานะหนังสือ${rangeNote}</h3>${donut}
      <div class="mt-4 pt-3 border-t border-slate-100 text-sm space-y-1">
-      <div class="flex justify-between"><span class="text-slate-500">ปิดเรื่องแล้ว</span><b>${K.closedN} เรื่อง</b></div>
-      <div class="flex justify-between"><span class="text-slate-500">ยังต้องกำกับติดตาม</span><b class="text-amber-600">${K.watch} เรื่อง</b></div>
-      <div class="flex justify-between"><span class="text-slate-500">ภายใน / ภายนอก</span><b>${K.inside} / ${K.outside}</b></div></div></div>
-    <div class="card p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">ความคืบหน้าตามลำดับขั้น</h3>${funnel}
+      <div class="flex justify-between"><span class="text-slate-500">ปิดเรื่องแล้ว</span><b>${FK.closedN} เรื่อง</b></div>
+      <div class="flex justify-between"><span class="text-slate-500">ยังต้องกำกับติดตาม</span><b class="text-amber-600">${FK.watch} เรื่อง</b></div>
+      <div class="flex justify-between"><span class="text-slate-500">ภายใน / ภายนอก</span><b>${FK.inside} / ${FK.outside}</b></div></div></div>
+    <div class="card p-5"><h3 class="font-bold mb-4" style="color:var(--nv)">ความคืบหน้าตามลำดับขั้น${rangeNote}</h3>${funnel}
      <p class="text-xs text-slate-400 mt-2">แถบ = จำนวนเรื่องที่ผ่านขั้นนั้นแล้ว · คิว = จำนวนเรื่องที่รออยู่</p></div>
-    <div class="card p-5"><h3 class="font-bold mb-1" style="color:var(--nv)">📌 ต้องกำกับติดตาม ${K.watch} เรื่อง</h3>
-     <p class="text-xs text-slate-500 mb-2">🔴 เกินกำหนด ${K.over} · 🟠 ใกล้ครบกำหนด ${K.soon}</p>
+    <div class="card p-5"><h3 class="font-bold mb-1" style="color:var(--nv)">📌 ต้องกำกับติดตาม ${FK.watch} เรื่อง</h3>
+     <p class="text-xs text-slate-500 mb-2">🔴 เกินกำหนด ${FK.over} · 🟠 ใกล้ครบกำหนด ${FK.soon}</p>
      ${open.length?watchList:'<p class="text-sm text-emerald-600 py-6 text-center">✅ ปิดเรื่องครบทุกรายการ</p>'}</div></div>
-   <div class="grid md:grid-cols-2 gap-5">
-    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามฝ่ายงาน/หน่วยงาน</h3>${catList}</div>
-    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามผู้รับเรื่อง</h3>${unitList}</div></div>`;
+   <div class="grid md:grid-cols-3 gap-5">
+    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามฝ่ายงาน/หน่วยงาน${rangeNote}</h3>${catList||'<p class="text-sm text-slate-400 py-4 text-center">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</p>'}</div>
+    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามผู้รับเรื่อง${rangeNote}</h3>${unitList||'<p class="text-sm text-slate-400 py-4 text-center">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</p>'}</div>
+    <div class="card p-5"><h3 class="font-bold mb-3" style="color:var(--nv)">จำแนกตามประเภทหนังสือ${rangeNote}</h3>${typeList||'<p class="text-sm text-slate-400 py-4 text-center">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</p>'}</div></div>`;
 
   /* คืนโฟกัส + ตำแหน่งเคอร์เซอร์ให้ช่องค้นหา เพื่อให้พิมพ์ต่อเนื่องได้โดยไม่ต้องคลิกใหม่ทุกตัวอักษร */
   if(_isSearch){
