@@ -196,7 +196,16 @@ const store = {
   del(k){ try { localStorage.removeItem(k); } catch (e) {} }
 };
 // ถ้าเคยบันทึกลิงก์ไว้ในเครื่องนี้ (จากปุ่มทดสอบการเชื่อมต่อ) ให้ใช้อันนั้นก่อน
-let API = store.get('doctrack_api') || CONFIG.API_URL;
+/* ลิงก์ที่เคยกดบันทึกไว้ในเครื่อง (จากปุ่มทดสอบการเชื่อมต่อ) เคยถูกใช้ก่อนค่าในไฟล์เสมอ
+   ทำให้เวลา Deploy ใหม่แล้วแก้ CONFIG.API_URL ในไฟล์ หน้านี้ยังยิงไปลิงก์เก่าจนสับสน
+   จึงจำไว้ด้วยว่าค่าที่บันทึกไว้นั้นคู่กับลิงก์ในไฟล์รุ่นไหน ถ้าไฟล์เปลี่ยนแล้วให้ทิ้งค่าเก่าทันที */
+let API = (function(){
+  const saved = store.get('doctrack_api');
+  const base  = store.get('doctrack_api_base');
+  if (saved && base === CONFIG.API_URL) return saved;   // ลิงก์ในไฟล์ยังเหมือนเดิม → ใช้ค่าที่ผู้ใช้ตั้งไว้
+  store.del('doctrack_api'); store.del('doctrack_api_base');
+  return CONFIG.API_URL;                                 // ลิงก์ในไฟล์เปลี่ยนแล้ว → ยึดตามไฟล์
+})();
 
 let TOKEN = store.get('doctrack_token');
 let ME = '', MY_STAGES = [], ALL_STAGES = [], IS_ADMIN = false;
@@ -373,6 +382,11 @@ function linkEditor(){
     + '<label>ลองเปลี่ยนลิงก์เชื่อมต่อ (เฉพาะเครื่องนี้)</label>'
     + '<input id="apiEdit" value="' + esc(API) + '" autocomplete="off">'
     + '<button class="ghost" style="margin-top:8px" onclick="saveLink()">บันทึกลิงก์แล้วทดสอบใหม่</button>'
+    + (store.get('doctrack_api')
+        ? '<div style="font-size:11.5px;color:var(--warn);margin-top:9px;line-height:1.6">'
+          + 'ขณะนี้ใช้ลิงก์ที่บันทึกไว้ในเครื่องนี้ ไม่ใช่ลิงก์ที่เขียนไว้ในไฟล์ scanner.html</div>'
+          + '<button class="ghost" style="margin-top:8px" onclick="resetLink()">↩️ กลับไปใช้ลิงก์ที่อยู่ในไฟล์</button>'
+        : '')
     + '</div>';
 }
 function saveLink(){
@@ -384,7 +398,15 @@ function saveLink(){
     return;
   }
   store.set('doctrack_api', v);
+  store.set('doctrack_api_base', CONFIG.API_URL);   // จำคู่ไว้ว่าค่านี้ตั้งตอนไฟล์เป็นลิงก์ใด
   API = v;
+  testLink();
+}
+
+/* ล้างลิงก์ที่จำไว้ในเครื่อง กลับไปใช้ค่าที่เขียนไว้ใน CONFIG.API_URL ของไฟล์ */
+function resetLink(){
+  store.del('doctrack_api'); store.del('doctrack_api_base');
+  API = CONFIG.API_URL;
   testLink();
 }
 

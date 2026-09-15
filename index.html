@@ -98,6 +98,9 @@
 const SHEET_ID = '1dxVXxM-JmUXMf9dNYBTGufcwmNdkWo_eA6EUw0mdScA';
 const GID      = '0';
 /* ใช้เรียก endpoint สาธารณะ ?page=api ของ Apps Script (ดูเหตุผลตีกลับ/ยกเลิก) — ไม่ใช่การล็อกอิน */
+/* ★ ลิงก์เว็บแอปของ Apps Script — แก้ที่นี่ "จุดเดียว" ทั้งหน้า
+   ทุกปุ่มและทุกการเรียกข้อมูลอ่านค่าจากตัวแปรนี้ ไม่มี URL ฝังซ้ำที่อื่นอีก
+   ต้องลงท้ายด้วย /exec และ Deploy แบบ "ทุกคน" */
 const ADMIN_URL = 'https://script.google.com/macros/s/AKfycbwK439xfhy4moZ4AnnvLcdthcUzIgCNSkiiWmmufO57ZmTWcOR6VR86HhJSLmEG2aa4/exec';
 /* ══════════ การแสดงข้อมูลผู้ขอรับบริการบนหน้าสาธารณะ ══════════
    หน้านี้ใครมีลิงก์ก็เปิดดูได้ จึงปิดบังอีเมลไว้เป็นค่าเริ่มต้น (เช่น pa****@msu.ac.th)
@@ -162,7 +165,7 @@ const FALLBACK=[
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
     <span class="w-2 h-2 rounded-full bg-emerald-500 pulse"></span><span id="lsync"></span></span>
    <a href="scanner.html" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">📷 เข้าสู่ระบบสแกน QR Code ของผู้ดูแล</a>
-   <a href="https://script.google.com/a/macros/msu.ac.th/s/AKfycbwy5KsUlo3lCSMnnDBWe-WdpODRuup9MqNXiP5FLtG8YLBMKjTcDqULMXXi15H-0YKi/exec" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
+   <a id="adminLink" href="#" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
    <button onclick="loadData()" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔄 รีเฟรช</button>
    <button onclick="window.print()" class="full-dash text-sm blue text-white rounded-lg px-4 py-2 font-medium shadow-sm">🖨 พิมพ์รายงาน</button>
   </div></div></header>
@@ -949,6 +952,8 @@ function exportCSV(){
 }
 loadData();
 initFeedback();
+/* ผูกปุ่มเข้าสู่ระบบผู้ดูแลกับ ADMIN_URL เพื่อให้มีที่แก้ URL แห่งเดียวจริงๆ */
+if (document.getElementById('adminLink')) adminLink.href = ADMIN_URL;
 setInterval(()=>{ if(!document.hidden) loadData(); }, 60000);
 </script>
 </body></html>
