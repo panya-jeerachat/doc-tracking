@@ -101,7 +101,7 @@ const GID      = '0';
 /* ★ ลิงก์เว็บแอปของ Apps Script — แก้ที่นี่ "จุดเดียว" ทั้งหน้า
    ทุกปุ่มและทุกการเรียกข้อมูลอ่านค่าจากตัวแปรนี้ ไม่มี URL ฝังซ้ำที่อื่นอีก
    ต้องลงท้ายด้วย /exec และ Deploy แบบ "ทุกคน" */
-const ADMIN_URL = 'https://script.google.com/macros/s/AKfycbwK439xfhy4moZ4AnnvLcdthcUzIgCNSkiiWmmufO57ZmTWcOR6VR86HhJSLmEG2aa4/exec';
+const ADMIN_URL = 'https://script.google.com/macros/s/AKfycbwv3tBhsd40-rjFQuTtwY5CkRu5vfkqDiK5rS3fgB6zlrpzhpOJBo6J2Z1SyAP7fWVT/exec';
 /* ══════════ การแสดงข้อมูลผู้ขอรับบริการบนหน้าสาธารณะ ══════════
    หน้านี้ใครมีลิงก์ก็เปิดดูได้ จึงปิดบังอีเมลไว้เป็นค่าเริ่มต้น (เช่น pa****@msu.ac.th)
    ถ้าต้องการให้แสดงเต็มให้ตั้ง MASK_EMAIL เป็น false
@@ -274,7 +274,21 @@ function computeStats(rows){
     rate:rows.length?Math.round(c('สำเร็จ')/rows.length*100):0};
 }
 /* หน้าติดตามเฉพาะเรื่อง: เปิดผ่านลิงก์ ?no=หมายเลขหนังสือ (สแกนจาก QR ในใบปะหน้า) */
-const TRACK_NO=new URLSearchParams(location.search).get('no');
+/* อ่านเลขหนังสือจาก URL ให้ได้ทุกรูปแบบที่เคยใช้ส่งออกไป เพื่อไม่ให้ QR/อีเมลที่พิมพ์และส่งไปแล้วใช้ไม่ได้
+     ?no=อว 0605.14/016   (รูปแบบมาตรฐานของระบบนี้)
+     ?doc=… / #doc=… / #no=…   (รูปแบบเดิมจากอีเมลรุ่นก่อน)
+     #อว 0605.14/016            (ลิงก์ที่มีแต่เลขหนังสือต่อท้าย #) */
+const TRACK_NO=(function(){
+  const q=new URLSearchParams(location.search);
+  let v=q.get('no')||q.get('doc');
+  const hash=location.hash.replace(/^#/,'');
+  if(!v && hash){
+    if(hash.indexOf('=')>-1){ const h=new URLSearchParams(hash); v=h.get('doc')||h.get('no'); }
+    else { try{ v=decodeURIComponent(hash); }catch(e){ v=hash; } }
+  }
+  v=String(v||'').trim();
+  return v||null;
+})();
 if(TRACK_NO){ document.body.classList.add('track-mode'); trackView.classList.remove('hidden'); }
 
 /* ══════════ โหลดข้อมูลจาก Google Sheets (gviz) ══════════ */
