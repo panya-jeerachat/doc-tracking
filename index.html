@@ -438,6 +438,19 @@ function build(list){
   if(TRACK_NO){ renderTrackView(); } else { render(); }
 }
 /* ══════════ RENDER ══════════ */
+/* ══════════ การค้นหาในช่อง "ค้นหาเลขที่ / เรื่อง" ══════════
+   ข้อมูลจริงมีช่องว่างอยู่ในตัว เช่น "อว 0605.14/016" แต่ผู้ใช้มักพิมพ์ติดกันว่า "อว0605.14/016"
+   ถ้าเทียบข้อความตรงๆ จะหาไม่เจอทั้งที่พิมพ์ถูก จึงตัดช่องว่างทั้งคำค้นและข้อมูลออกก่อนเทียบ
+   และยอมให้พิมพ์หลายคำคั่นช่องว่างได้ด้วย เช่น "cctv 016" — ทุกคำต้องอยู่ในเรื่องเดียวกัน
+   (ค้นได้ทั้งเลขที่หนังสือ ชื่อเรื่อง ขั้นตอนปัจจุบัน ประเภท ฝ่าย/ส่วนงาน ผู้รับเรื่อง และผู้ขอรับบริการ) */
+const squash=v=>String(v||'').toLowerCase().replace(/\s+/g,'');
+function matchQ(d,q){
+  const raw=String(q||'').trim();
+  if(!raw) return true;
+  const hay=squash([d.no,d.subject,d.where,d.type,d.dept,d.recip,d.reqName,d.status].join(' '));
+  return raw.split(/\s+/).map(squash).filter(Boolean).every(t=>hay.indexOf(t)>-1);
+}
+
 function render(){
   /* เก็บสถานะโฟกัส/ตำแหน่งเคอร์เซอร์ของช่องค้นหาไว้ก่อน เพราะ innerHTML ด้านล่าง
      จะสร้าง <input> ตัวใหม่ทับของเดิม ทำให้โฟกัสหลุดถ้าไม่ทำแบบนี้ */
@@ -446,7 +459,7 @@ function render(){
   const _selStart=_isSearch?_active.selectionStart:null;
   const _selEnd=_isSearch?_active.selectionEnd:null;
   const K=KPI;
-  const f=ROWS.filter(d=>(!Q||(d.no+' '+d.subject+' '+d.where).toLowerCase().includes(Q.toLowerCase()))
+  const f=ROWS.filter(d=>matchQ(d,Q)
    &&(!FS||d.status===FS)&&(!FT||d.timeState===FT)
    &&(!DF||!d.start||D0(d.start)>=D0(new Date(DF+'T00:00:00')))
    &&(!DT||!d.start||D0(d.start)<=D0(new Date(DT+'T00:00:00'))));
@@ -467,7 +480,7 @@ function render(){
     <div class="mr-auto"><h2 class="font-bold text-lg" style="color:var(--nv)">📚 ทะเบียนหนังสือ
      <span class="text-slate-400 font-normal text-sm">(${f.length}/${ROWS.length} รายการ · เรียงจากล่าสุด)</span></h2>
      <p class="text-xs text-slate-500">คลิกที่แถวเพื่อดูไทม์ไลน์ว่าหนังสืออยู่ขั้นตอนใด</p></div>
-    <input id="searchQ" value="${esc(Q)}" oninput="Q=this.value;render()" placeholder="🔍 ค้นหาเลขที่ / เรื่อง" class="border border-slate-300 rounded-lg px-3 py-2 text-sm min-w-[190px]">
+    <input id="searchQ" value="${esc(Q)}" oninput="Q=this.value;render()" placeholder="🔍 ค้นหาเลขที่ / เรื่อง / ฝ่าย / ชื่อผู้ขอ" class="border border-slate-300 rounded-lg px-3 py-2 text-sm min-w-[190px]">
     <select onchange="FS=this.value;render()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm">
      ${[''].concat(Object.keys(K.statusCounts).sort((a,b)=>(K.statusCounts[b]-K.statusCounts[a])))
        .map(s=>`<option value="${esc(s)}" ${FS===s?'selected':''}>${s?esc(s):'ทุกสถานะ'}</option>`).join('')}</select>
