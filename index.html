@@ -381,7 +381,8 @@ async function loadData(){
       'ผู้ขอรับบริการ':['ชื่อผู้ขอรับบริการ','เจ้าของเรื่อง'],
       'อีเมลผู้ขอรับบริการ':['อีเมล','email','Email','E-Mail','e-mail'],
       'ข้อความถึงผู้ขอรับบริการ':['ข้อความ','message'],
-      'ไฟล์ข้อมูล':['ไฟล์แนบ','ลิงก์ไฟล์','ไฟล์']};
+      'ไฟล์ข้อมูล':['ไฟล์แนบ','ลิงก์ไฟล์','ไฟล์'],
+      'ลำดับที่':['ลำดับ','ที่']};
     const pick=(o,name)=>{
       if(o[name]!==undefined) return o[name];
       for(const alt of (COL_ALIASES[name]||[])) if(o[alt]!==undefined) return o[alt];
@@ -393,7 +394,7 @@ async function loadData(){
         o['วันที่งานสำเร็จ/ส่งคืนหนังสือไปยังเจ้าของเรื่อง'],o['ชื่อผู้รับเรื่อง'],o['จากฝ่าย/ส่วนงาน'],
         /* คอลัมน์ที่เพิ่มมาทีหลัง — ชีตเก่าที่ยังไม่มีคอลัมน์เหล่านี้จะได้ค่าว่างและไม่แสดงหัวข้อนั้น */
         pick(o,'ผู้ขอรับบริการ'),pick(o,'อีเมลผู้ขอรับบริการ'),pick(o,'ข้อความถึงผู้ขอรับบริการ'),
-        pick(o,'หมายเหตุ'),pick(o,'ไฟล์ข้อมูล')]);
+        pick(o,'หมายเหตุ'),pick(o,'ไฟล์ข้อมูล'),pick(o,'ลำดับที่')]);
     if(!list.length) throw new Error('ไม่พบข้อมูลในชีต (ตรวจสอบชื่อหัวคอลัมน์ให้ตรงกับที่ระบบต้องการ)');
     build(list); warn.classList.add('hidden');
     live.classList.remove('hidden'); lsync.textContent='อัปเดต '+new Date().toLocaleTimeString('th-TH');
@@ -428,7 +429,8 @@ function build(list){
       start:sd, end:parseDate(a[10]), days:days, sla:sla, over:over, passed:passed, where:where, closed:closed,
       recip:a[11]||'', dept:a[12]||'',
       reqName:String(a[13]||'').trim(), reqEmail:String(a[14]||'').trim(),
-      reqMsg:String(a[15]||'').trim(), note:String(a[16]||'').trim(), file:String(a[17]||'').trim(), _seq:i,
+      reqMsg:String(a[15]||'').trim(), note:String(a[16]||'').trim(), file:String(a[17]||'').trim(),
+      seq:parseInt(String(a[18]||'').replace(/[^0-9]/g,''),10)||0, _seq:i,
       timeState: closed?(status==='สำเร็จ'?'เสร็จแล้ว':'ยกเลิก'):(over>0?'เกินกำหนด':((sla-days)<=1?'ใกล้ครบกำหนด':'ปกติ'))};
   }).sort((x,y)=> y._seq - x._seq);   /* เรื่องที่เพิ่มล่าสุด (แถวท้ายสุดของชีต) ขึ้นก่อนเสมอ ไม่ขึ้นกับวันที่เริ่มงาน */
 
@@ -447,7 +449,7 @@ const squash=v=>String(v||'').toLowerCase().replace(/\s+/g,'');
 function matchQ(d,q){
   const raw=String(q||'').trim();
   if(!raw) return true;
-  const hay=squash([d.no,d.subject,d.where,d.type,d.dept,d.recip,d.reqName,d.status].join(' '));
+  const hay=squash([d.no,'#'+d.seq,d.seq,d.subject,d.where,d.type,d.dept,d.recip,d.reqName,d.status].join(' '));
   return raw.split(/\s+/).map(squash).filter(Boolean).every(t=>hay.indexOf(t)>-1);
 }
 
@@ -494,11 +496,13 @@ function render(){
     <button onclick="exportCSV()" class="border border-slate-300 px-3 py-2 rounded-lg text-sm">⬇ CSV</button></div>
    <div class="overflow-auto max-h-[1120px]"><table class="w-full text-sm">
     <thead class="text-slate-600"><tr>
-     <th class="p-3 text-left">เลขที่</th><th class="p-3 text-left">เรื่อง</th><th class="p-3">วันที่เริ่ม</th>
+     <th class="p-3">ลำดับ</th><th class="p-3 text-left">เลขที่หนังสือ</th><th class="p-3 text-left">เรื่อง</th><th class="p-3">วันที่เริ่ม</th>
      <th class="p-3">ผ่านมา (วัน)</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
      <th class="p-3 text-left">ขั้นตอนปัจจุบัน</th><th class="p-3">สถานะ</th><th class="p-3">เวลา</th><th class="p-3"></th></tr></thead><tbody>
     ${f.map(d=>`<tr class="border-t border-slate-100 hover:bg-blue-50/50 cursor-pointer ${d.over>0?'bg-rose-50/40':''}" onclick="detail('${d.no}')">
-     <td class="p-3 font-mono font-bold text-slate-700">${esc(d.no)}</td>
+     <td class="p-3 text-center font-mono text-slate-400">${d.seq||'-'}</td>
+     <td class="p-3 font-mono font-bold text-slate-700">${d.no ? esc(d.no)
+       : '<span class="text-xs font-sans font-normal bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-1 whitespace-nowrap">ยังไม่ออกเลข</span>'}</td>
      <td class="p-3"><div class="font-medium">${esc(d.subject)}</div><div class="text-xs text-slate-400">${esc(d.type)} · ผู้รับ: ${esc(d.owners['ผู้รับ']||'-')}</div></td>
      <td class="p-3 text-center text-slate-600 whitespace-nowrap">${fmt(d.start)}</td>
      <td class="p-3 text-center font-semibold">${d.days===''?'-':d.days}</td>
@@ -510,7 +514,7 @@ function render(){
      <td class="p-3 text-center"><span class="px-2 py-1 rounded-md text-[10px] leading-tight font-medium border inline-block max-w-[120px] whitespace-normal" ${sb(d.status)}>${esc(d.status)}</span></td>
      <td class="p-3 text-center"><span class="px-2 py-1 rounded-full text-[11px] leading-tight whitespace-nowrap border ${tb(d.timeState)}">${TI[d.timeState]||''} ${d.over>0?'เกิน '+d.over+' วัน':esc(d.timeState)}</span></td>
      <td class="p-3 text-right"><span class="text-blue-700 font-medium whitespace-nowrap">ดูสถานะ →</span></td></tr>`).join('')
-     ||'<tr><td colspan="10" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'}
+     ||'<tr><td colspan="11" class="p-10 text-center text-slate-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>'}
    </tbody></table></div></div>`;
 
   /* ── KPI แถวย่อย (คำนวณจากชุดที่กรอง/เลือกช่วงวันที่อยู่ f/FK เสมอ — ไม่ใช่ภาพรวมทั้งหมด) ── */
@@ -557,7 +561,7 @@ function render(){
   /* ── รายการต้องกำกับติดตาม (เฉพาะชุดที่กรองอยู่) ── */
   const watchList=open.slice().sort((a,b)=>b.over-a.over).map(d=>
    `<div class="flex justify-between items-center border-b border-slate-100 py-2 text-sm cursor-pointer hover:bg-blue-50/50 px-1 rounded" onclick="detail('${d.no}')">
-    <div><b class="font-mono text-slate-700">${esc(d.no)}</b> ${esc(d.subject)}
+    <div><b class="font-mono text-slate-700">${esc(noLabel(d))}</b> ${esc(d.subject)}
      <div class="text-xs text-blue-700">${esc(d.where)}</div></div>
     <div class="text-right shrink-0">${d.over>0?`<b class="text-rose-600">เกิน ${d.over} วัน</b>`:`<b class="text-blue-700">${d.days} วัน</b>`}
      <div class="text-xs text-slate-400">กำหนด ${d.sla} วัน</div></div></div>`).join('');
@@ -603,6 +607,11 @@ function render(){
 }
 
 /* ══════════ ลิงก์ติดตามเฉพาะเรื่อง (เข้ารหัสใน QR) ══════════ */
+/* รหัสอ้างอิงที่ใช้แทนหนังสือหนึ่งเรื่องทั้งในลิงก์ติดตาม QR และการค้นหา
+   ปกติคือเลขหนังสือ แต่เรื่องที่สารบรรณยังออกเลขไม่ทันจะใช้ "#ลำดับที่" ไปก่อน
+   ฝั่ง Apps Script รับรหัสทั้งสองแบบ จึงสแกน QR ประทับตราได้ตั้งแต่ยังไม่มีเลขหนังสือ */
+const keyOf=d=>d.no || (d.seq ? '#'+d.seq : '');
+const noLabel=d=>d.no || (d.seq ? 'ลำดับที่ '+d.seq : '—');
 const trackLink=no=>location.origin+location.pathname+'?no='+encodeURIComponent(no);
 
 /* ══════════ การ์ดไทม์ไลน์ + สถานะของหนังสือ 1 เรื่อง (ใช้ร่วมกันทั้ง modal และหน้าติดตามจาก QR) ══════════ */
@@ -633,6 +642,17 @@ const kvHTML=list=>list.map(([k,v])=>`<dt class="text-slate-500">${esc(k)}</dt><
 const remainText=d=>d.closed?'ปิดเรื่องแล้ว':(d.days===''?'-':(d.over>0?'เกินกำหนด '+d.over+' วัน':'เหลืออีก '+Math.max(0,d.sla-d.days)+' วัน'));
 
 /* ══════════ การ์ดไทม์ไลน์ + สถานะของหนังสือ 1 เรื่อง (ใช้ร่วมกันทั้ง modal และหน้าติดตามจาก QR) ══════════ */
+/* ค้นเรื่องจากรหัสอ้างอิง — รับได้ทั้งเลขหนังสือ "#12" และเลขลำดับล้วน */
+function findDoc(key){
+  const k=String(key||'').trim();
+  if(!k) return null;
+  let d=ROWS.find(x=>x.no===k);
+  if(d) return d;
+  const m=k.match(/^#?\s*(\d+)$/);
+  if(m){ const q=parseInt(m[1],10); d=ROWS.find(x=>x.seq===q); if(d) return d; }
+  return null;
+}
+
 function docCardHTML(d, standalone){
   const sfx=standalone?'track':'modal';
   const tl=STAGES.map((g,i)=>{
@@ -646,7 +666,8 @@ function docCardHTML(d, standalone){
       <div class="text-sm break-words ${on?'text-slate-600':'text-slate-400'}">${on?'ผู้รับผิดชอบ: '+esc(owner):'ยังไม่ถึงขั้นตอนนี้'}</div></div></div>`;
   }).join('');
 
-  const infoRows=[['หมายเลขหนังสือ',d.no],['เรื่อง',d.subject],['ประเภทหนังสือ',d.type]];
+  const infoRows=[['ลำดับที่ในทะเบียน',d.seq||'-'],
+    ['หมายเลขหนังสือ',d.no||'ยังไม่ได้ออกเลข'],['เรื่อง',d.subject],['ประเภทหนังสือ',d.type]];
   if(d.reqName) infoRows.push(['ผู้ขอรับบริการ',d.reqName]);
   if(d.reqEmail && PRIVACY.SHOW_EMAIL) infoRows.push(['อีเมลผู้ขอรับบริการ',showMail(d.reqEmail)]);
   infoRows.push(['ชื่อผู้รับเรื่อง',d.recip||'-'],['จากฝ่าย/ส่วนงาน',d.dept||'-'],['วันที่เริ่มงาน',fmt(d.start)],
@@ -673,7 +694,8 @@ function docCardHTML(d, standalone){
   return `<div class="${standalone?'card p-5':''}">
    <div class="flex justify-between items-start gap-3 mb-4">
     <div class="flex-1 min-w-0"><div class="text-xs text-slate-500">หนังสือเลขที่</div>
-     <div class="text-3xl font-bold break-words" style="color:var(--nv)">${esc(d.no)}</div>
+     <div class="text-3xl font-bold break-words" style="color:var(--nv)">${esc(noLabel(d))}</div>
+     ${d.no?'':`<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-1 inline-block mt-1">ยังไม่ได้ออกเลขหนังสือ — อ้างอิงด้วยลำดับที่ ${d.seq} ไปก่อน</div>`}
      <div class="font-medium mt-1 break-words">${esc(d.subject)}</div>
      <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.dept?' · '+esc(d.dept):''}</div>
      <div class="mt-2 flex gap-2 flex-wrap">
@@ -720,14 +742,14 @@ function docCardHTML(d, standalone){
       <div id="qrDetail_${sfx}" class="flex justify-center"></div>
       <div class="font-semibold text-slate-700 text-sm mt-2">📱 สแกนเพื่อติดตามเรื่องนี้</div>
       <div class="text-xs text-slate-400 mt-0.5">ดูสถานะแบบเรียลไทม์จากมือถือได้ทันที</div>
-      <div class="text-[10px] break-all font-mono text-slate-400 mt-1">${esc(trackLink(d.no))}</div>
+      <div class="text-[10px] break-all font-mono text-slate-400 mt-1">${esc(trackLink(keyOf(d)))}</div>
       <div class="flex flex-col gap-2 mt-3 noprint">
        <a href="${SCAN_URL}" target="_blank" rel="noopener" class="text-sm text-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3 py-2 font-medium">🖊️ ประทับสถานะ (สำหรับเจ้าหน้าที่)</a>
-       <button onclick="previewCover('${esc(d.no)}')" class="text-sm blue text-white rounded-lg px-3 py-2 font-medium">👁 พรีวิวใบปะหน้า A4</button>
-       <button onclick="printCover('${esc(d.no)}')" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🖨 พิมพ์ใบปะหน้า A4</button>
-       <button onclick="printLabel('${esc(d.no)}', LABEL_SIZE)" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🏷 พิมพ์สติกเกอร์ QR</button>
-       <button onclick="saveQR('qrDetail_${sfx}','${esc(d.no)}')" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">💾 บันทึก QR เป็นรูปภาพ</button>
-       <button id="copyBtn-${sfx}" onclick="copyLink('${esc(d.no)}','${sfx}')" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔗 คัดลอกลิงก์ติดตาม</button>
+       <button onclick="previewCover('${esc(keyOf(d))}')" class="text-sm blue text-white rounded-lg px-3 py-2 font-medium">👁 พรีวิวใบปะหน้า A4</button>
+       <button onclick="printCover('${esc(keyOf(d))}')" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🖨 พิมพ์ใบปะหน้า A4</button>
+       <button onclick="printLabel('${esc(keyOf(d))}', LABEL_SIZE)" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🏷 พิมพ์สติกเกอร์ QR</button>
+       <button onclick="saveQR('qrDetail_${sfx}','${esc(keyOf(d))}')" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">💾 บันทึก QR เป็นรูปภาพ</button>
+       <button id="copyBtn-${sfx}" onclick="copyLink('${esc(keyOf(d))}','${sfx}')" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔗 คัดลอกลิงก์ติดตาม</button>
       </div></div>
 
      <div class="border border-slate-200 rounded-xl p-4">
@@ -737,7 +759,7 @@ function docCardHTML(d, standalone){
    </div></div>`;
 }
 function detail(no){
-  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  const d=findDoc(no); if(!d) return;
   openM(docCardHTML(d,false));
   drawDetailQR(d,'qrDetail_modal');
   drawDetailReason(d,'reasonDetail_modal');
@@ -746,7 +768,7 @@ function detail(no){
 function drawDetailQR(d, boxId){
   const box=document.getElementById(boxId); if(!box) return;
   box.innerHTML='';
-  new QRCode(box,{text:trackLink(d.no), width:128, height:128, correctLevel:QRCode.CorrectLevel.M});
+  new QRCode(box,{text:trackLink(keyOf(d)), width:128, height:128, correctLevel:QRCode.CorrectLevel.M});
 }
 /* บันทึก QR ที่แสดงอยู่เป็นไฟล์ PNG (qrcodejs วาดเป็น <canvas> และมี <img> สำรองในบางเบราว์เซอร์) */
 function saveQR(boxId, no){
@@ -896,7 +918,7 @@ function initFeedback(){
 }
 /* ══════════ หน้าติดตามเฉพาะเรื่อง (เปิดจาก QR) ══════════ */
 function renderTrackView(){
-  const d=ROWS.find(x=>x.no===TRACK_NO);
+  const d=findDoc(TRACK_NO);
   document.title='ติดตามหนังสือ '+TRACK_NO+' | DocTrack';
   if(!d){
     trackView.innerHTML=`<div class="card p-6 text-center">
@@ -915,7 +937,7 @@ function renderTrackView(){
 }
 /* ══════════ ใบปะหน้า A4 (รายละเอียดครบ) + QR CODE ══════════ */
 function buildCover(d){
-  const url=trackLink(d.no);
+  const url=trackLink(keyOf(d));
   const stCol = d.status==='สำเร็จ'?['#dcfce7','#166534']:d.status==='ยกเลิก'?['#f1f5f9','#475569']:
                 d.status==='แก้ไข'?['#fef3c7','#92400e']:['#e0f2fe','#075985'];
   const tmCol = d.over>0?['#ffe4e6','#be123c']:d.timeState==='ใกล้ครบกำหนด'?['#ffedd5','#9a3412']:['#dcfce7','#166534'];
@@ -939,7 +961,7 @@ function buildCover(d){
      <img src="logo.png" onerror="this.style.display='none'" alt="">
      <div><div class="orgname">คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</div>
       <div class="orgsub">สำนักงานเลขานุการคณบดี · งานสารบรรณ (DocTrack)</div></div></div>
-    <div class="badge">หนังสือเลขที่<br>${esc(d.no)}</div></div>
+    <div class="badge">${d.no?'หนังสือเลขที่':'ลำดับที่ (ยังไม่ออกเลข)'}<br>${esc(d.no||d.seq)}</div></div>
 
    <div class="a4title">ใบปะหน้ากำกับติดตามสถานะหนังสือ</div>
    <div class="a4sub">เอกสารประกอบการเดินหนังสือ — ตรวจสอบสถานะล่าสุดได้ตลอดเวลาด้วยการสแกน QR Code</div>
@@ -957,7 +979,8 @@ function buildCover(d){
 
      <div class="a4sec"><h4>🧾 รายละเอียดหนังสือ</h4>
       <dl class="a4kv">
-       <dt>หมายเลขหนังสือ</dt><dd>${esc(d.no)}</dd>
+       <dt>ลำดับที่ในทะเบียน</dt><dd>${d.seq||'-'}</dd>
+       <dt>หมายเลขหนังสือ</dt><dd>${d.no?esc(d.no):'ยังไม่ได้ออกเลข ณ วันที่พิมพ์'}</dd>
        <dt>เรื่อง</dt><dd>${esc(d.subject)}</dd>
        <dt>ประเภทหนังสือ</dt><dd>${esc(d.type)}</dd>
        ${d.reqName?`<dt>ผู้ขอรับบริการ</dt><dd>${esc(d.reqName)}</dd>`:''}
@@ -976,7 +999,7 @@ function buildCover(d){
       หนังสือฉบับนี้บันทึกและเปลี่ยนสถานะผ่านระบบกำกับติดตามหนังสือ (DocTrack) ซึ่งเชื่อมต่อฐานข้อมูลกลางแบบเรียลไทม์
       ทุกขั้นตอนถูกประทับชื่อผู้รับผิดชอบพร้อมวัน–เวลาโดยอัตโนมัติเมื่อสแกน QR Code
       ผู้ตรวจสอบจึงยืนยันความถูกต้องล่าสุดได้ทันทีจาก QR ด้านขวา โดยไม่ต้องลงลายมือชื่อรับรองบนใบปะหน้านี้<br>
-      เลขอ้างอิงระบบ: <b>${esc(d.no)}</b></div>
+      เลขอ้างอิงระบบ: <b>${esc(keyOf(d))}</b></div>
     </div>
 
     <div>
@@ -1004,7 +1027,7 @@ function buildCover(d){
 }
 /* พรีวิวใบปะหน้าบนจอก่อนพิมพ์ — ตรวจความถูกต้องได้โดยไม่ต้องเปลืองกระดาษ */
 function previewCover(no){
-  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  const d=findDoc(no); if(!d) return;
   buildCover(d);
   coverSheet.classList.add('preview'); coverBackdrop.classList.add('show');
   document.body.style.overflow='hidden';
@@ -1015,7 +1038,7 @@ function closeCover(){
   else if(TRACK_NO) document.body.style.overflow='';
 }
 function printCover(no){
-  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  const d=findDoc(no); if(!d) return;
   buildCover(d);
   coverSheet.classList.remove('preview'); coverBackdrop.classList.remove('show');
   /* สำคัญ: ต้องตั้ง @page กลับเป็น A4 เสมอตอนพิมพ์ใบปะหน้า — labelPageStyle เป็นสไตล์เดียวกับที่
@@ -1042,7 +1065,7 @@ const LABEL_SIZES={
 const mm2px=mm=>Math.round(mm*96/25.4);
 
 function printLabel(no, sizeKey){
-  const d=ROWS.find(x=>x.no===no); if(!d) return;
+  const d=findDoc(no); if(!d) return;
   const sz=LABEL_SIZES[sizeKey]||LABEL_SIZES['50x30'];
   const url=trackLink(d.no);
   const minSide=Math.min(sz.w,sz.h);
