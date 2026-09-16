@@ -80,9 +80,21 @@
  #coverSheet.preview #coverClose{display:block}
  @media print{#coverClose{display:none!important}}
  /* ── ดาวประเมินความพึงพอใจ ── */
- .star{font-size:30px;line-height:1;cursor:pointer;color:#cbd5e1;transition:transform .12s,color .12s;background:none;border:0;padding:0 1px}
- .star:hover{transform:scale(1.18)}
- .star.on{color:#f59e0b}
+ .star{font-size:34px;line-height:1;cursor:pointer;color:#dbe2ea;background:none;border:0;padding:0 3px;
+  transition:transform .18s cubic-bezier(.2,1.6,.4,1),color .18s ease,text-shadow .18s ease;transform-origin:50% 60%}
+ .star:focus{outline:none}
+ .star:focus-visible{outline:2px solid #fbbf24;outline-offset:3px;border-radius:6px}
+ /* ไล่สีทองตามตำแหน่งเคอร์เซอร์ — ดาวที่อยู่ก่อนหน้าจะสว่างตามไปด้วย */
+ .star.lit{color:#fbbf24;text-shadow:0 3px 10px rgba(251,191,36,.45)}
+ .star.lit.near{transform:translateY(-3px) scale(1.16)}
+ .star.lit.hot{transform:translateY(-7px) scale(1.42) rotate(-6deg)}
+ /* ดาวที่เลือกไว้แล้ว */
+ .star.on{color:#f59e0b;text-shadow:0 2px 7px rgba(245,158,11,.4)}
+ .star.pop{animation:starpop .45s cubic-bezier(.2,1.7,.35,1)}
+ @keyframes starpop{0%{transform:scale(1)}35%{transform:scale(1.55) rotate(-10deg)}70%{transform:scale(.92) rotate(4deg)}100%{transform:scale(1)}}
+ #fbLabel_page{transition:opacity .18s ease;min-height:22px}
+ #fbLabel_page.big{font-size:15px;font-weight:700}
+ @media (prefers-reduced-motion:reduce){ .star,.star.lit.near,.star.lit.hot{transform:none!important;transition:color .15s} .star.pop{animation:none} }
  /* ── สติกเกอร์ QR (เครื่องพิมพ์ความร้อนขนาดเล็ก) ── */
  #labelSheet{display:none}
  body.printing-label>*:not(#labelSheet){display:none!important}
@@ -102,6 +114,11 @@ const GID      = '0';
    ทุกปุ่มและทุกการเรียกข้อมูลอ่านค่าจากตัวแปรนี้ ไม่มี URL ฝังซ้ำที่อื่นอีก
    ต้องลงท้ายด้วย /exec และ Deploy แบบ "ทุกคน" */
 const ADMIN_URL = 'https://script.google.com/macros/s/AKfycbwn_TUszaEICIzizRUjT7LnkBMK9g9eua-XpGEqKc4LUoxR7Datkqmcih9JLn7G6_vr/exec';
+/* ลิงก์สำหรับ "ปุ่มเข้าสู่ระบบผู้ดูแล" โดยเฉพาะ — ต้องเป็นแบบระบุโดเมน /a/macros/msu.ac.th/
+   เพราะถ้าเบราว์เซอร์ล็อกอิน Google ไว้หลายบัญชี Chrome จะเดาบัญชีผิดแล้วขึ้นหน้าปฏิเสธสิทธิ์
+   การใส่โดเมนไว้ในลิงก์ช่วยให้ Chrome เลือกบัญชี @msu.ac.th ให้ถูกตั้งแต่แรก
+   ส่วน ADMIN_URL ด้านบนใช้เรียกข้อมูลแบบไม่ต้องล็อกอิน จึงต้องเป็นลิงก์ธรรมดา ห้ามใส่โดเมน */
+const ADMIN_LOGIN_URL = 'https://script.google.com/a/macros/msu.ac.th/s/AKfycbwn_TUszaEICIzizRUjT7LnkBMK9g9eua-XpGEqKc4LUoxR7Datkqmcih9JLn7G6_vr/exec';
 /* ══════════ การแสดงข้อมูลผู้ขอรับบริการบนหน้าสาธารณะ ══════════
    หน้านี้ใครมีลิงก์ก็เปิดดูได้ จึงปิดบังอีเมลไว้เป็นค่าเริ่มต้น (เช่น pa****@msu.ac.th)
    ถ้าต้องการให้แสดงเต็มให้ตั้ง MASK_EMAIL เป็น false
@@ -165,7 +182,11 @@ const FALLBACK=[
    <span id="live" class="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500 mr-1">
     <span class="w-2 h-2 rounded-full bg-emerald-500 pulse"></span><span id="lsync"></span></span>
    <a href="scanner.html" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">📷 เข้าสู่ระบบสแกน QR Code ของผู้ดูแล</a>
-   <a id="adminLink" href="#" target="_blank" rel="noopener" class="full-dash text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</a>
+   <span class="full-dash flex">
+    <button onclick="openAdmin()" class="text-sm border border-slate-300 bg-white rounded-l-lg px-3 py-2 hover:bg-slate-50 flex items-center gap-1">🔐 เข้าสู่ระบบผู้ดูแล</button>
+    <button onclick="askLoginMode()" title="เปลี่ยนวิธีเข้าสู่ระบบ (กรณีเข้าไม่ได้)"
+     class="text-sm border border-l-0 border-slate-300 bg-white rounded-r-lg px-2 py-2 hover:bg-slate-50 text-slate-500">▾</button>
+   </span>
    <button onclick="loadData()" class="text-sm border border-slate-300 bg-white rounded-lg px-3 py-2 hover:bg-slate-50">🔄 รีเฟรช</button>
    <button onclick="window.print()" class="full-dash text-sm blue text-white rounded-lg px-4 py-2 font-medium shadow-sm">🖨 พิมพ์รายงาน</button>
   </div></div></header>
@@ -182,6 +203,30 @@ const FALLBACK=[
 <div id="trackView" class="hidden max-w-3xl mx-auto px-4 py-6"></div>
 
 
+<!-- ══════════ เลือกวิธีเข้าสู่ระบบผู้ดูแล ══════════ -->
+<div id="loginModeModal" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 noprint" onclick="if(event.target===this)closeLoginMode()">
+ <div class="card w-full max-w-md p-5">
+  <div class="flex justify-between items-start mb-1">
+   <h3 class="font-bold text-lg" style="color:var(--nv)">🔐 เข้าสู่ระบบผู้ดูแล</h3>
+   <button onclick="closeLoginMode()" class="text-2xl text-slate-400 leading-none">&times;</button></div>
+  <p class="text-sm text-slate-500 mb-4">เลือกวิธีที่ใช้ได้กับเครื่องนี้ ระบบจะจำไว้ให้ ครั้งต่อไปกดปุ่มเดียวเข้าได้เลย
+   (เปลี่ยนภายหลังได้ที่ปุ่ม ▾ ข้างปุ่มเข้าสู่ระบบ)</p>
+
+  <button onclick="pickLoginMode('domain')" class="w-full text-left border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-xl p-3 mb-2">
+   <div class="font-semibold text-sm">🏛️ เข้าด้วยบัญชี @msu.ac.th</div>
+   <div class="text-xs text-slate-500 mt-0.5">สำหรับเครื่องที่ลงชื่อเข้าใช้ Google ด้วยอีเมลมหาวิทยาลัยอยู่แล้ว
+    เช่น iPhone ที่ล็อกอิน msu.ac.th ไว้ — แนะนำสำหรับเจ้าหน้าที่ส่วนใหญ่</div></button>
+
+  <button onclick="pickLoginMode('plain')" class="w-full text-left border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 rounded-xl p-3">
+   <div class="font-semibold text-sm">🌐 เข้าแบบไม่ผูกบัญชี Google</div>
+   <div class="text-xs text-slate-500 mt-0.5">ใช้เมื่อวิธีแรกขึ้นหน้าปฏิเสธสิทธิ์ หรือเครื่องนั้นลงชื่อ Google ไว้หลายบัญชี
+    / ไม่ได้ลงชื่อด้วยอีเมลมหาวิทยาลัย</div></button>
+
+  <p class="text-xs text-slate-400 mt-4 leading-relaxed">ทั้งสองวิธีเข้าหน้าเดียวกันและยังต้องกรอกชื่อผู้ใช้กับรหัสผ่านของระบบเหมือนเดิม
+   ต่างกันแค่วิธีที่ Google เลือกบัญชีให้เท่านั้น ถ้ากดแล้วขึ้นข้อผิดพลาด ให้กลับมาเลือกอีกวิธีได้ทันที</p>
+ </div>
+</div>
+
 <!-- ══════════ ⭐ ประเมินความพึงพอใจการให้บริการ (ท้ายหน้า) ══════════ -->
 <section id="fbSection" class="hidden max-w-3xl mx-auto px-4 pb-8 noprint">
  <div class="card p-5 md:p-6">
@@ -189,7 +234,7 @@ const FALLBACK=[
    <div class="font-bold text-lg" style="color:var(--nv)">⭐ ประเมินความพึงพอใจการให้บริการ</div>
    <p class="text-sm text-slate-500 mt-1 max-w-xl mx-auto">ความคิดเห็นของท่านจะถูกนำไปปรับปรุงการให้บริการงานสารบรรณ
     สำนักงานเลขานุการคณบดี — ไม่มีการเก็บชื่อหรือข้อมูลส่วนบุคคลของผู้ประเมิน</p>
-   <div class="flex justify-center gap-1 mt-3" id="fbStars_page"><button type="button" class="star" id="star_page_1" onclick="setStar('page',1)" title="1 คะแนน">★</button><button type="button" class="star" id="star_page_2" onclick="setStar('page',2)" title="2 คะแนน">★</button><button type="button" class="star" id="star_page_3" onclick="setStar('page',3)" title="3 คะแนน">★</button><button type="button" class="star" id="star_page_4" onclick="setStar('page',4)" title="4 คะแนน">★</button><button type="button" class="star" id="star_page_5" onclick="setStar('page',5)" title="5 คะแนน">★</button></div>
+   <div class="flex justify-center gap-1 mt-3" id="fbStars_page" onmouseleave="leaveStars('page')"><button type="button" class="star" id="star_page_1" title="1 คะแนน" onclick="setStar('page',1)" onmouseenter="hoverStar('page',1)" onfocus="hoverStar('page',1)" onblur="leaveStars('page')">★</button><button type="button" class="star" id="star_page_2" title="2 คะแนน" onclick="setStar('page',2)" onmouseenter="hoverStar('page',2)" onfocus="hoverStar('page',2)" onblur="leaveStars('page')">★</button><button type="button" class="star" id="star_page_3" title="3 คะแนน" onclick="setStar('page',3)" onmouseenter="hoverStar('page',3)" onfocus="hoverStar('page',3)" onblur="leaveStars('page')">★</button><button type="button" class="star" id="star_page_4" title="4 คะแนน" onclick="setStar('page',4)" onmouseenter="hoverStar('page',4)" onfocus="hoverStar('page',4)" onblur="leaveStars('page')">★</button><button type="button" class="star" id="star_page_5" title="5 คะแนน" onclick="setStar('page',5)" onmouseenter="hoverStar('page',5)" onfocus="hoverStar('page',5)" onblur="leaveStars('page')">★</button></div>
    <div id="fbLabel_page" class="text-sm font-medium text-amber-600 h-5 mt-1"></div>
   </div>
   <textarea id="fbNote_page" rows="3" maxlength="500" placeholder="ข้อเสนอแนะเพิ่มเติม (ไม่บังคับ)"
@@ -717,10 +762,39 @@ const LAST_REASON={};
 /* ══════════ ⭐ ระบบประเมินความพึงพอใจ ══════════ */
 const FB_SCORE={};                                     /* คะแนนที่ผู้ใช้เลือกไว้ แยกตามการ์ด (modal/track) */
 const FB_TEXT=['','😞 น้อยที่สุด','🙁 น้อย','😐 ปานกลาง','🙂 มาก','😀 มากที่สุด'];
+const starEl=(sfx,i)=>document.getElementById('star_'+sfx+'_'+i);
+
+/* ทาสีดาวถึงดวงที่ n — ดวงสุดท้ายเด้งสูงสุด ดวงก่อนหน้าเด้งน้อยลงมา ให้ดูมีชีวิตเหมือนคลื่น */
+function paintStars(sfx,n,preview){
+  for(let i=1;i<=5;i++){
+    const el=starEl(sfx,i); if(!el) continue;
+    const lit=i<=n;
+    el.classList.toggle('lit',lit&&preview);
+    el.classList.toggle('on',lit&&!preview);
+    el.classList.toggle('hot',preview&&i===n);
+    el.classList.toggle('near',preview&&lit&&i===n-1);
+  }
+}
+/* ชี้ค้างไว้ = ดูตัวอย่างคะแนน ยังไม่ถือว่าเลือก */
+function hoverStar(sfx,n){
+  paintStars(sfx,n,true);
+  const lb=document.getElementById('fbLabel_'+sfx);
+  if(lb){ lb.textContent=FB_TEXT[n]; lb.classList.add('big'); }
+}
+/* เอาเคอร์เซอร์ออก = กลับไปแสดงคะแนนที่เลือกไว้จริง (ถ้ายังไม่เลือกก็กลับเป็นสีเทา) */
+function leaveStars(sfx){
+  const cur=FB_SCORE[sfx]||0;
+  paintStars(sfx,cur,false);
+  const lb=document.getElementById('fbLabel_'+sfx);
+  if(lb){ lb.textContent=cur?FB_TEXT[cur]:''; lb.classList.remove('big'); }
+}
 function setStar(sfx,n){
   FB_SCORE[sfx]=n;
-  for(let i=1;i<=5;i++){ const el=document.getElementById('star_'+sfx+'_'+i); if(el) el.classList.toggle('on',i<=n); }
-  const lb=document.getElementById('fbLabel_'+sfx); if(lb) lb.textContent=FB_TEXT[n];
+  paintStars(sfx,n,false);
+  const el=starEl(sfx,n);
+  if(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }  /* รีสตาร์ตอนิเมชันให้เด้งทุกครั้งที่กด */
+  const lb=document.getElementById('fbLabel_'+sfx);
+  if(lb){ lb.textContent=FB_TEXT[n]; lb.classList.remove('big'); }
 }
 /* จำไว้ว่าเครื่องนี้เคยประเมินไปแล้ว (กันกดซ้ำโดยไม่ตั้งใจ) — ห่อ try ไว้เผื่อเบราว์เซอร์ปิด storage */
 function ratedBefore(no){ try{ return !!localStorage.getItem('dt_fb_'+no); }catch(e){ return false; } }
@@ -966,8 +1040,28 @@ function exportCSV(){
 }
 loadData();
 initFeedback();
-/* ผูกปุ่มเข้าสู่ระบบผู้ดูแลกับ ADMIN_URL เพื่อให้มีที่แก้ URL แห่งเดียวจริงๆ */
-if (document.getElementById('adminLink')) adminLink.href = ADMIN_URL;
+/* ══════════ วิธีเข้าสู่ระบบผู้ดูแล ══════════
+   ลิงก์เว็บแอปของ Apps Script มีสองรูปแบบ และแต่ละเครื่องใช้ได้ไม่เหมือนกัน
+     · แบบระบุโดเมน (/a/macros/msu.ac.th/) — เครื่องที่ลงชื่อ Google ด้วยอีเมลมหาวิทยาลัยจะเข้าได้ทันที
+       แต่เครื่องที่ไม่ได้ลงชื่อด้วยอีเมลนั้นจะถูกปฏิเสธ
+     · แบบไม่ระบุโดเมน — เครื่องทั่วไปเข้าได้ แต่เครื่องที่ลงชื่อ Google ไว้หลายบัญชี
+       บางครั้ง Chrome เลือกบัญชีผิดแล้วขึ้นข้อผิดพลาด
+   จึงให้ผู้ใช้เลือกเองครั้งเดียวแล้วจำไว้ในเครื่องนั้น ไม่ต้องให้ทุกคนใช้แบบเดียวกัน */
+const LOGIN_MODE_KEY='dt_admin_login_mode';
+const loginUrlOf=m=>m==='domain'?ADMIN_LOGIN_URL:ADMIN_URL;
+function getLoginMode(){ try{ return localStorage.getItem(LOGIN_MODE_KEY); }catch(e){ return null; } }
+function openAdmin(){
+  const m=getLoginMode();
+  if(!m){ askLoginMode(); return; }            /* ยังไม่เคยเลือก → ถามก่อนหนึ่งครั้ง */
+  window.open(loginUrlOf(m),'_blank','noopener');
+}
+function askLoginMode(){ loginModeModal.classList.remove('hidden'); }
+function closeLoginMode(){ loginModeModal.classList.add('hidden'); }
+function pickLoginMode(m){
+  try{ localStorage.setItem(LOGIN_MODE_KEY,m); }catch(e){}
+  closeLoginMode();
+  window.open(loginUrlOf(m),'_blank','noopener');
+}
 setInterval(()=>{ if(!document.hidden) loadData(); }, 60000);
 </script>
 </body></html>
