@@ -178,14 +178,24 @@
 
    ติดต่อกับฐานข้อมูลผ่านเว็บแอปของ Apps Script ที่ระบุใน API_URL ด้านล่าง
    ========================================================================== */
+/* ★★ เวลา Deploy ใหม่ ให้แก้แค่ DEPLOY_ID บรรทัดเดียว ★★
+   ลิงก์เว็บแอปมีสองรูปแบบที่ใช้ไอดีเดียวกัน ระบบสร้างให้เองทั้งคู่
+     · แบบระบุโดเมน (/a/macros/msu.ac.th/) — มือถือที่ลงชื่อ Google ด้วยอีเมลมหาวิทยาลัยต้องใช้อันนี้
+     · แบบธรรมดา — สำหรับเครื่องที่ไม่ได้ลงชื่อด้วยอีเมลมหาวิทยาลัย
+   PREFER คือแบบที่จะลองก่อน ถ้าลองแล้วติดต่อไม่ได้ ระบบจะสลับไปลองอีกแบบให้เองอัตโนมัติ
+   แล้วจำไว้ในเครื่องนั้น ผู้ใช้จึงไม่ต้องรู้เรื่องนี้เลย */
 const CONFIG = {
-  // ★ URL เว็บแอปของ Apps Script (ลงท้ายด้วย /exec)
-  //   ต้อง Deploy โดยตั้ง Who has access เป็น "Anyone" มิฉะนั้นหน้านี้จะติดต่อไม่ได้
-  // ★ หลังจากเพิ่ม doPost ใน Code.gs แล้ว ต้อง Deploy เวอร์ชันใหม่โดยตั้ง
-  //   "ผู้ที่มีสิทธิ์เข้าถึง = ทุกคน" แล้วนำ URL /exec ที่ได้มาวางแทนบรรทัดนี้
-  //   (ถ้าลืม สามารถแก้ได้จากปุ่ม "ทดสอบการเชื่อมต่อฐานข้อมูล" ในหน้าเข้าสู่ระบบโดยไม่ต้องแก้ไฟล์)
-  API_URL: 'https://script.google.com/a/macros/msu.ac.th/s/AKfycbwn_TUszaEICIzizRUjT7LnkBMK9g9eua-XpGEqKc4LUoxR7Datkqmcih9JLn7G6_vr/exec'
+  DEPLOY_ID: 'AKfycbzSXZ1AXKsEF47jlnoByZon50vKN5mMy2kwIJu2Tbd7sqmn9kPvFw7i0mh-TBnvcxs',
+  GOOGLE_DOMAIN: 'msu.ac.th',
+  PREFER: 'domain'        // 'domain' = ลองแบบระบุโดเมนก่อน · 'plain' = ลองแบบธรรมดาก่อน
 };
+const execUrl = (id, dom) => dom
+  ? 'https://script.google.com/a/macros/' + dom + '/s/' + id + '/exec'
+  : 'https://script.google.com/macros/s/' + id + '/exec';
+CONFIG.API_DOMAIN = execUrl(CONFIG.DEPLOY_ID, CONFIG.GOOGLE_DOMAIN);
+CONFIG.API_PLAIN  = execUrl(CONFIG.DEPLOY_ID, '');
+CONFIG.API_URL    = (CONFIG.PREFER === 'domain' && CONFIG.GOOGLE_DOMAIN)
+  ? CONFIG.API_DOMAIN : CONFIG.API_PLAIN;
 
 const $ = id => document.getElementById(id);
 
@@ -266,9 +276,32 @@ function toast(text, kind){
    ติดต่อฐานข้อมูลผ่าน Apps Script
    ส่งเป็น text/plain เพื่อไม่ให้เบราว์เซอร์ยิง preflight ซึ่ง Apps Script รับไม่ได้
    ========================================================================== */
+/* ลิงก์อีกแบบของ Deploy เดียวกัน — ใช้เป็นตัวสำรองเมื่อแบบที่ใช้อยู่ติดต่อไม่ได้ */
+function altApi(){
+  if (!CONFIG.GOOGLE_DOMAIN) return '';
+  const a = (API === CONFIG.API_DOMAIN) ? CONFIG.API_PLAIN : CONFIG.API_DOMAIN;
+  return a === API ? '' : a;
+}
+
 function call(fn, args){
   if (!API) return Promise.reject(new Error('ยังไม่ได้ตั้งค่าลิงก์เว็บแอปในไฟล์ scanner.html'));
-  return fetch(API, {
+  return postTo(API, fn, args).catch(err => {
+    const alt = altApi();
+    /* ล้มเพราะติดต่อไม่ได้/ถูกบังคับล็อกอินเท่านั้นจึงลองลิงก์สำรอง
+       ถ้าเซิร์ฟเวอร์ตอบกลับมาว่ารหัสผ่านผิดหรือหมดสิทธิ์ ต้องไม่ลองซ้ำ */
+    if (!err || !err.canRetryOtherLink || !alt) throw err;
+    return postTo(alt, fn, args).then(data => {
+      API = alt;
+      store.set('doctrack_api', alt);
+      store.set('doctrack_api_base', CONFIG.API_URL);
+      try { toast('สลับไปใช้ลิงก์สำรองให้อัตโนมัติแล้ว', true); } catch (e) {}
+      return data;
+    }).catch(() => { throw err; });
+  });
+}
+
+function postTo(url, fn, args){
+  return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ fn: fn, args: args })
@@ -278,9 +311,11 @@ function call(fn, args){
     let res;
     try { res = JSON.parse(txt); }
     catch (e) {
-      // ได้หน้า HTML กลับมาแทน JSON แปลว่า Google บังคับให้ล็อกอินก่อน
-      throw new Error('เว็บแอปตอบกลับมาไม่ถูกรูปแบบ — ตรวจสอบว่า Deploy โดยตั้ง '
-        + 'Who has access เป็น Anyone แล้วหรือยัง');
+      // ได้หน้า HTML กลับมาแทน JSON แปลว่า Google บังคับให้ล็อกอินก่อน → ลองลิงก์อีกแบบได้
+      const err = new Error('เว็บแอปตอบกลับมาไม่ถูกรูปแบบ — อาจถูกบังคับให้ล็อกอินก่อน '
+        + '(ตรวจการตั้งค่า Who has access ตอน Deploy)');
+      err.canRetryOtherLink = true;
+      throw err;
     }
     if (!res.ok) throw new Error(res.message || 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์');
     return res.data;
@@ -291,8 +326,10 @@ function call(fn, args){
     const net = (e && e.name === 'TypeError')
       || /failed to fetch|load failed|networkerror|network error/i.test((e && e.message) || '');
     if (net) {
-      throw new Error('ติดต่อเซิร์ฟเวอร์ไม่ได้ — กดปุ่ม "ทดสอบการเชื่อมต่อฐานข้อมูล" '
+      const err = new Error('ติดต่อเซิร์ฟเวอร์ไม่ได้ — กดปุ่ม "ทดสอบการเชื่อมต่อฐานข้อมูล" '
         + 'ด้านล่างเพื่อดูสาเหตุและวิธีแก้');
+      err.canRetryOtherLink = true;
+      throw err;
     }
     throw e;
   });
