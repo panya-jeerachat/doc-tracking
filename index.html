@@ -137,8 +137,67 @@ const PRIVACY = { SHOW_EMAIL:true, MASK_EMAIL:true, SHOW_MSG:true };
 /* ลิงก์หน้าสแกน QR สำหรับเจ้าหน้าที่ (ไฟล์ scanner.html ที่วางไว้ข้างๆ ไฟล์นี้)
    ใส่เป็นที่อยู่เต็ม เช่น 'https://.../scanner.html' ก็ได้ถ้าวางไว้คนละที่กัน */
 const SCAN_URL = 'scanner.html';
-/* กำหนดจำนวนวันแล้วเสร็จ (SLA) — ทุกประเภทเรื่องใช้ 3 วันเท่ากันหมด ตามที่ต้องการ */
+/* กำหนดจำนวนวันแล้วเสร็จ (SLA) — ทุกประเภทเรื่องใช้ 3 วันทำการเท่ากันหมด */
 const slaOf = s => 3;
+
+/* ══════════ ปฏิทินวันหยุด สำหรับนับ "วันทำการ" ══════════
+   เจ้าหน้าที่แจ้งว่ากรอบ 3 วันคือ 3 "วันทำการ" ระบบจึงต้องไม่นับเสาร์ อาทิตย์ และวันหยุดราชการ
+   ★ ต้องมาเพิ่มรายการของปีถัดไปทุกต้นปี ไม่งั้นระบบจะนับวันหยุดปีใหม่เป็นวันทำการ
+   ★ ถ้ามหาวิทยาลัยประกาศหยุดเพิ่มเป็นกรณีพิเศษ (เช่น หยุดชดเชย ซ้อมรับปริญญา น้ำท่วม)
+     ให้เพิ่มวันนั้นลงในรายการนี้ได้เลย รูปแบบ 'YYYY-MM-DD'
+   รายการด้านล่างคือวันหยุดราชการ พ.ศ. 2569 (ค.ศ. 2026) */
+const HOLIDAYS = [
+  '2026-01-01', // วันขึ้นปีใหม่
+  '2026-01-02', // วันหยุดราชการกรณีพิเศษ
+  '2026-03-03', // วันมาฆบูชา
+  '2026-04-06', // วันจักรี
+  '2026-04-13', // วันสงกรานต์
+  '2026-04-14', // วันสงกรานต์
+  '2026-04-15', // วันสงกรานต์
+  '2026-05-04', // วันฉัตรมงคล
+  '2026-05-13', // วันพืชมงคล
+  '2026-06-01', // ชดเชยวันวิสาขบูชา (31 พ.ค. ตรงกับวันอาทิตย์)
+  '2026-06-03', // วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี
+  '2026-07-28', // วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว
+  '2026-07-29', // วันอาสาฬหบูชา
+  '2026-07-30', // วันเข้าพรรษา
+  '2026-08-12', // วันเฉลิมพระชนมพรรษา สมเด็จพระบรมราชชนนีพันปีหลวง / วันแม่
+  '2026-10-13', // วันคล้ายวันสวรรคต ในหลวงรัชกาลที่ 9
+  '2026-10-23', // วันปิยมหาราช
+  '2026-12-07', // ชดเชยวันพ่อแห่งชาติ (5 ธ.ค. ตรงกับวันเสาร์)
+  '2026-12-10', // วันรัฐธรรมนูญ
+  '2026-12-31', // วันสิ้นปี
+  '2027-01-01'  // วันขึ้นปีใหม่ (กันคาบเกี่ยวสิ้นปี)
+];
+const HOLIDAY_SET = new Set(HOLIDAYS);
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+/* วันทำการ = ไม่ใช่เสาร์ (6) ไม่ใช่อาทิตย์ (0) และไม่อยู่ในปฏิทินวันหยุด */
+const isWorkday = d => d.getDay()!==0 && d.getDay()!==6 && !HOLIDAY_SET.has(ymd(d));
+
+/* นับจำนวนวันทำการที่ผ่านไปหลังจากวันเริ่มงาน จนถึงวันที่กำหนด (นับวันปลายทางด้วยถ้าเป็นวันทำการ)
+   วันที่รับเรื่องเองไม่ถูกนับ เพราะถือว่าเป็นวันที่ 0 ของการดำเนินการ */
+function workdaysBetween(from, to){
+  if(!from || !to) return 0;
+  const c = D0(from), end = D0(to);
+  let n = 0, guard = 0;
+  while(c < end && guard++ < 3650){
+    c.setDate(c.getDate() + 1);
+    if(isWorkday(c)) n++;
+  }
+  return n;
+}
+/* วันครบกำหนดจริง = นับไปข้างหน้าทีละวันทำการจนครบตามกรอบ SLA */
+function dueDateOf(start, sla){
+  if(!start) return null;
+  const c = D0(start);
+  let left = sla, guard = 0;
+  while(left > 0 && guard++ < 3650){
+    c.setDate(c.getDate() + 1);
+    if(isWorkday(c)) left--;
+  }
+  return c;
+}
+const fmtDue = d => d ? d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '-';
 /* ขนาดสติกเกอร์ QR ที่ใช้ประจำ — เปลี่ยนที่นี่ที่เดียวถ้าเปลี่ยนม้วนสติกเกอร์/เครื่องพิมพ์
    ค่าที่ใช้ได้: '76x102' | '102x76' | '60x40' | '57x40' | '50x30' | '40x30' (หน่วยเป็นมิลลิเมตร) */
 const LABEL_SIZE = '50x30';
@@ -417,16 +476,18 @@ function build(list){
     const closed=(status==='สำเร็จ'||status==='ยกเลิก');
     const sd=parseDate(a[0]); let ed=parseDate(a[10]);
     if(!closed) ed=null;
-    const days=sd?Math.round((D0(ed||T)-D0(sd))/86400000):'';
+    /* นับเป็น "วันทำการ" ไม่ใช่วันปฏิทิน — เสาร์ อาทิตย์ และวันหยุดราชการไม่ถูกนับ */
+    const days=sd?workdaysBetween(sd, ed||T):'';
     const sla=slaOf(a[2]);
     const over=(!closed&&days!=='')?Math.max(0,days-sla):0;
+    const due=sd?dueDateOf(sd,sla):null;
     const passed=STAGES.filter(g=>String(owners[g.c]||'').trim()).length;
     const nextStage=STAGES.find(g=>!String(owners[g.c]||'').trim());
     let where = closed ? (status==='สำเร็จ'?'ดำเนินการครบทุกขั้นตอน':'ยุติเรื่องแล้ว')
       : status==='แก้ไข' ? 'ตีกลับ — รอผู้รับเรื่องแก้ไข'
       : nextStage ? 'รอ '+nextStage.c : 'รอสรุปปิดเรื่อง';
     return {no:String(a[1]).trim(), subject:a[2]||'-', owners:owners, status:status, type:a[9]||'-',
-      start:sd, end:parseDate(a[10]), days:days, sla:sla, over:over, passed:passed, where:where, closed:closed,
+      start:sd, end:parseDate(a[10]), days:days, sla:sla, over:over, due:due, passed:passed, where:where, closed:closed,
       recip:a[11]||'', dept:a[12]||'',
       reqName:String(a[13]||'').trim(), reqEmail:String(a[14]||'').trim(),
       reqMsg:String(a[15]||'').trim(), note:String(a[16]||'').trim(), file:String(a[17]||'').trim(),
@@ -499,7 +560,7 @@ function render(){
    <div class="overflow-auto max-h-[1120px]"><table class="w-full text-sm">
     <thead class="text-slate-600"><tr>
      <th class="p-3">ลำดับ</th><th class="p-3 text-left">เลขที่หนังสือ</th><th class="p-3 text-left">เรื่อง</th><th class="p-3">วันที่เริ่ม</th>
-     <th class="p-3">ผ่านมา (วัน)</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
+     <th class="p-3">ผ่านมา (วันทำการ)</th><th class="p-3">กำหนด</th><th class="p-3">ความคืบหน้า</th>
      <th class="p-3 text-left">ขั้นตอนปัจจุบัน</th><th class="p-3">สถานะ</th><th class="p-3">เวลา</th><th class="p-3"></th></tr></thead><tbody>
     ${f.map(d=>`<tr class="border-t border-slate-100 hover:bg-blue-50/50 cursor-pointer ${d.over>0?'bg-rose-50/40':''}" onclick="detail('${d.no}')">
      <td class="p-3 text-center font-mono text-slate-400">${d.seq||'-'}</td>
@@ -641,7 +702,7 @@ const showMail=m=>!m?'':(PRIVACY.MASK_EMAIL?maskMail(m):m);
 const safeUrl=u=>/^https?:\/\//i.test(String(u||'').trim())?String(u).trim():'';
 
 const kvHTML=list=>list.map(([k,v])=>`<dt class="text-slate-500">${esc(k)}</dt><dd class="font-semibold break-words">${esc(v)}</dd>`).join('');
-const remainText=d=>d.closed?'ปิดเรื่องแล้ว':(d.days===''?'-':(d.over>0?'เกินกำหนด '+d.over+' วัน':'เหลืออีก '+Math.max(0,d.sla-d.days)+' วัน'));
+const remainText=d=>d.closed?'ปิดเรื่องแล้ว':(d.days===''?'-':(d.over>0?'เกินกำหนด '+d.over+' วันทำการ':'เหลืออีก '+Math.max(0,d.sla-d.days)+' วันทำการ'));
 
 /* ══════════ การ์ดไทม์ไลน์ + สถานะของหนังสือ 1 เรื่อง (ใช้ร่วมกันทั้ง modal และหน้าติดตามจาก QR) ══════════ */
 /* ค้นเรื่องจากรหัสอ้างอิง — รับได้ทั้งเลขหนังสือ "#12" และเลขลำดับล้วน */
@@ -678,8 +739,9 @@ function docCardHTML(d, standalone){
     ['ขั้นตอนปัจจุบัน',d.where]);
   const infoKV=kvHTML(infoRows);
   const fileUrl=safeUrl(d.file);
-  const slaKV=kvHTML([['มาตรฐานการเดินหนังสือ','ไม่เกิน '+d.sla+' วัน'],
-    ['ระยะเวลาที่ใช้ไป',d.days===''?'-':d.days+' วัน'],['คงเหลือ / เกินกำหนด',remainText(d)],
+  const slaKV=kvHTML([['มาตรฐานการเดินหนังสือ','ไม่เกิน '+d.sla+' วันทำการ (ไม่นับเสาร์-อาทิตย์และวันหยุดราชการ)'],
+    ['ครบกำหนดวันที่',d.due?fmtDue(d.due):'-'],
+    ['ระยะเวลาที่ใช้ไป',d.days===''?'-':d.days+' วันทำการ'],['คงเหลือ / เกินกำหนด',remainText(d)],
     ['ระดับการแจ้งเตือน',(TI[d.timeState]||'')+' '+d.timeState],['ข้อเสนอแนะ',advice(d)]]);
   const tsKV=kvHTML([['เวลาที่เปิดดูรายการนี้',new Date().toLocaleString('th-TH')],
     ['ซิงก์ข้อมูลล่าสุด',(document.getElementById('lsync')&&lsync.textContent)||'ตามรอบซิงก์ระบบ (ทุก 60 วินาที)'],
@@ -702,7 +764,7 @@ function docCardHTML(d, standalone){
      <div class="text-sm text-slate-500">${esc(d.type)} · เริ่ม ${fmt(d.start)}${d.dept?' · '+esc(d.dept):''}</div>
      <div class="mt-2 flex gap-2 flex-wrap">
       <span class="px-3 py-1 rounded-md text-xs leading-snug font-medium border inline-block max-w-[220px] whitespace-normal" ${sb(d.status)}>${esc(d.status)}</span>
-      <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span>
+      <span class="px-3 py-1 rounded-full text-sm border ${tb(d.timeState)}">${TI[d.timeState]||''} ${esc(d.timeState)}${d.over>0?' '+d.over+' วันทำการ':''}</span>
       ${d.end?'<span class="px-3 py-1 rounded-full text-sm border bg-emerald-50 text-emerald-700 border-emerald-200">✅ ส่งคืนหนังสือ/งานสำเร็จเมื่อ '+esc(fmt(d.end))+'</span>':''}</div></div>
     ${standalone?'':'<button onclick="closeM()" class="text-3xl text-slate-400 leading-none">&times;</button>'}</div>
 
@@ -713,9 +775,9 @@ function docCardHTML(d, standalone){
     <!-- ── คอลัมน์ซ้าย : ข้อมูล + เวลา + ไทม์ไลน์ ── -->
     <div class="min-w-0">
      <div class="grid grid-cols-3 gap-3 mb-5 text-center">
-      <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ผ่านมา</div><div class="text-2xl font-bold text-blue-700">${d.days===''?'-':d.days}</div><div class="text-xs text-slate-400">วัน</div></div>
-      <div class="bg-slate-50 rounded-xl py-3"><div class="text-xs text-slate-500">กำหนดแล้วเสร็จ</div><div class="text-2xl font-bold text-slate-700">${d.sla}</div><div class="text-xs text-slate-400">วัน</div></div>
-      <div class="${d.over>0?'bg-rose-50':'bg-emerald-50'} rounded-xl py-3"><div class="text-xs text-slate-500">เกินกำหนด</div><div class="text-2xl font-bold ${d.over>0?'text-rose-600':'text-emerald-600'}">${d.over}</div><div class="text-xs text-slate-400">วัน</div></div></div>
+      <div class="bg-blue-50 rounded-xl py-3"><div class="text-xs text-slate-500">ผ่านมา</div><div class="text-2xl font-bold text-blue-700">${d.days===''?'-':d.days}</div><div class="text-xs text-slate-400">วันทำการ</div></div>
+      <div class="bg-slate-50 rounded-xl py-3"><div class="text-xs text-slate-500">กำหนดแล้วเสร็จ</div><div class="text-2xl font-bold text-slate-700">${d.sla}</div><div class="text-xs text-slate-400">วันทำการ</div></div>
+      <div class="${d.over>0?'bg-rose-50':'bg-emerald-50'} rounded-xl py-3"><div class="text-xs text-slate-500">เกินกำหนด</div><div class="text-2xl font-bold ${d.over>0?'text-rose-600':'text-emerald-600'}">${d.over}</div><div class="text-xs text-slate-400">วันทำการ</div></div></div>
      <div class="mb-5"><div class="flex justify-between text-xs text-slate-500 mb-1"><span>ความคืบหน้า</span><span>${d.passed}/5 ขั้นตอน</span></div>
       <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-3 rounded-full" style="width:${d.passed/5*100}%;background:${d.over>0?'#e11d48':'#1d4ed8'}"></div></div></div>
 
@@ -974,7 +1036,7 @@ function buildCover(d){
      <div class="a4meta">ประเภท ${esc(d.type)} · จากฝ่าย/ส่วนงาน ${esc(d.dept||'-')} · เริ่มงาน ${fmt(d.start)}</div>
      <div class="a4pills">
       <span class="a4pill" style="background:${stCol[0]};color:${stCol[1]}">สถานะ: ${esc(d.status)}</span>
-      <span class="a4pill" style="background:${tmCol[0]};color:${tmCol[1]}">${esc(d.timeState)}${d.over>0?' '+d.over+' วัน':''}</span>
+      <span class="a4pill" style="background:${tmCol[0]};color:${tmCol[1]}">${esc(d.timeState)}${d.over>0?' '+d.over+' วันทำการ':''}</span>
       <span class="a4pill" style="background:#f1f5f9;color:#334155">ความคืบหน้า ${d.passed}/5 ขั้นตอน</span></div>
 
      <div class="a4sec"><h4>🧭 เส้นทางการเดินหนังสือ (5 ขั้นตอน)</h4><div class="a4steps">${steps}</div></div>
@@ -993,7 +1055,7 @@ function buildCover(d){
        ${d.note?`<dt>หมายเหตุ</dt><dd>${esc(d.note)}</dd>`:''}
        <dt>วันที่เริ่มงาน</dt><dd>${fmt(d.start)}</dd>
        <dt>ขั้นตอนปัจจุบัน</dt><dd>${esc(d.where)}</dd>
-       <dt>กำหนดแล้วเสร็จ</dt><dd>ไม่เกิน ${d.sla} วัน (${esc(remainText(d))})</dd>
+       <dt>กำหนดแล้วเสร็จ</dt><dd>ไม่เกิน ${d.sla} วันทำการ · ครบกำหนด ${esc(fmtDue(d.due))} (${esc(remainText(d))})</dd>
        <dt>วันที่งานสำเร็จ/ส่งคืนหนังสือ</dt><dd>${d.end?'✅ '+fmt(d.end):'ยังไม่แล้วเสร็จ ณ วันที่พิมพ์'}</dd>
        <dt>ข้อเสนอแนะการติดตาม</dt><dd>${esc(advice(d))}</dd></dl></div>
      ${reasonBlock}
@@ -1010,8 +1072,8 @@ function buildCover(d){
       <p>สแกนเพื่อดูสถานะล่าสุดของเรื่องนี้แบบเรียลไทม์<br>โดยไม่ต้องเข้าสู่ระบบ</p>
       <p style="font-family:monospace;word-break:break-all;font-size:8.6px">${esc(url)}</p></div>
      <div class="a4nums">
-      <div><b style="color:#0369a1">${d.days===''?'-':d.days}</b><span>ผ่านมา (วัน)</span></div>
-      <div><b style="color:#334155">${d.sla}</b><span>กำหนด (วัน)</span></div>
+      <div><b style="color:#0369a1">${d.days===''?'-':d.days}</b><span>ผ่านมา (วันทำการ)</span></div>
+      <div><b style="color:#334155">${d.sla}</b><span>กำหนด (วันทำการ)</span></div>
       <div><b style="color:${d.over>0?'#e11d48':'#059669'}">${d.over}</b><span>เกินกำหนด</span></div></div>
      <div class="a4note"><div style="font-size:10.5px;color:#0369a1;font-weight:700;margin-bottom:6px">📝 บันทึกเพิ่มเติมระหว่างเดินเรื่อง</div>
       <div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
