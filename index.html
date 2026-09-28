@@ -798,7 +798,7 @@ function docCardHTML(d, standalone){
     <div class="min-w-0 flex flex-col gap-4">
      ${fileUrl ? `<a href="${esc(fileUrl)}" target="_blank" rel="noopener"
        class="block text-center text-sm bg-sky-600 hover:bg-sky-700 text-white rounded-xl px-3 py-3 font-medium noprint">
-       📎 เปิดดูไฟล์เอกสารของเรื่องนี้<div class="text-[11px] font-normal opacity-90 mt-0.5">เปิดในแท็บใหม่ · ไฟล์จาก Google Drive</div></a>`
+       📎 เปิดดูไฟล์เอกสารของเรื่องนี้<div class="text-[11px] font-normal opacity-90 mt-0.5">เปิดในแท็บใหม่</div></a>`
       : (d.file ? `<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
        📎 มีไฟล์เอกสารแนบไว้ แต่ลิงก์ที่บันทึกในชีตไม่ใช่ลิงก์เว็บที่เปิดได้: ${esc(d.file)}</div>` : '')}
 
