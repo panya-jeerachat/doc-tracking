@@ -837,6 +837,8 @@ function stateOf(doc, key){
 }
 
 function renderDoc(doc){
+  // ผู้ดูแลอาจปรับขั้นตอนการเสนอหลังจากที่เปิดหน้านี้ไว้ — ใช้ชุดล่าสุดที่เซิร์ฟเวอร์ส่งมากับผลการค้นทุกครั้ง
+  if (doc.stages && doc.stages.length) ALL_STAGES = doc.stages;
   const badge = {
     'ดำเนินการ': 'b-run', 'แก้ไข': 'b-fix', 'สำเร็จ': 'b-ok', 'ยกเลิก': 'b-cancel'
   }[doc.status] || 'b-none';
@@ -877,8 +879,10 @@ function renderDoc(doc){
 
     const first = doc.actionable[0];
     actions += '<button class="warnb mt" onclick="stamp(\'' + jss(first) + '\',\'REJECT\')">↩ ตีกลับให้แก้ไข</button>';
-    if (doc.actionable.indexOf('คณบดี') !== -1 || IS_ADMIN) {
-      const ck = doc.actionable.indexOf('คณบดี') !== -1 ? 'คณบดี' : first;
+    // ขั้นตอนที่ยกเลิกเรื่องได้ ผู้ดูแลกำหนดเองในแท็บ ⚙️ ขั้นตอนการเสนอ (ค่าตั้งต้นคือคณบดี)
+    const ck = doc.cancelStage !== undefined ? doc.cancelStage
+      : (doc.actionable.indexOf('คณบดี') !== -1 ? 'คณบดี' : (IS_ADMIN ? first : ''));
+    if (ck) {
       actions += '<button class="dangerb mt" onclick="stamp(\'' + jss(ck) + '\',\'CANCEL\')">✕ ยกเลิกเรื่อง</button>';
     }
   } else if (doc.blockReason) {
