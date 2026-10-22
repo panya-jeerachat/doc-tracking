@@ -839,6 +839,14 @@ function stateOf(doc, key){
 function renderDoc(doc){
   // ผู้ดูแลอาจปรับขั้นตอนการเสนอหลังจากที่เปิดหน้านี้ไว้ — ใช้ชุดล่าสุดที่เซิร์ฟเวอร์ส่งมากับผลการค้นทุกครั้ง
   if (doc.stages && doc.stages.length) ALL_STAGES = doc.stages;
+  // ผู้อนุมัติที่ไม่ได้รับผิดชอบเรื่องนี้ — ระบบไม่ส่งรายละเอียดมา แสดงแค่ว่าเรื่องรอใครอยู่
+  if (doc.restricted) {
+    $('docCard').innerHTML = '<div class="card center" style="color:#475569;font-size:14px;line-height:1.6">'
+      + '<div style="font-size:30px;margin-bottom:6px">🔒</div><b>' + esc(doc.no) + '</b><br>' + esc(doc.blockReason || 'เรื่องนี้ไม่ได้อยู่ในความรับผิดชอบของคุณ')
+      + '</div><button class="ghost" style="margin-bottom:14px" onclick="clearDoc()">สแกนเรื่องถัดไป</button>';
+    $('docCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
   const badge = {
     'ดำเนินการ': 'b-run', 'แก้ไข': 'b-fix', 'สำเร็จ': 'b-ok', 'ยกเลิก': 'b-cancel'
   }[doc.status] || 'b-none';
