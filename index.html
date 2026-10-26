@@ -5,10 +5,22 @@
 <title>DocTrack | ระบบกำกับติดตามสถานะหนังสือภายในสำนักงานเลขานุการคณบดี คณะวิศวกรรมศาสตร์ มมส.</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- ฟอนต์ "มอน้ำชี" (Mornamchi) ฟอนต์ประจำมหาวิทยาลัยมหาสารคาม — ลิขสิทธิ์เฉพาะมหาวิทยาลัยมหาสารคาม
+     ไฟล์ฟอนต์เก็บอยู่บนเซิร์ฟเวอร์ของคณะ (eng.msu.ac.th) เท่านั้น หน้านี้แค่อ้างถึง ไม่ได้ฝังหรือคัดลอกไฟล์ฟอนต์ไว้ในหน้า
+     ห้ามนำไฟล์ฟอนต์ขึ้น GitHub หรือที่เก็บไฟล์สาธารณะ · โหลดไม่ได้ (เช่น อยู่นอกเครือข่าย) ระบบใช้ Sarabun แทนอัตโนมัติ -->
+<link rel="preconnect" href="https://eng.msu.ac.th" crossorigin>
+<link rel="preload" href="https://eng.msu.ac.th/documentstracking/fonts/mornamchi/Mornamchi-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="https://eng.msu.ac.th/documentstracking/fonts/mornamchi/Mornamchi-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="https://eng.msu.ac.th/documentstracking/fonts/mornamchi/mornamchi.css">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+ /* ── ฟอนต์ประจำมหาวิทยาลัย: มอน้ำชี (มี 300 / 400 / 700 · 500 ใช้ Regular · 600 ใช้ Bold ตาม @font-face ของมหาวิทยาลัย) ── */
+ :root{--msu-font:"Mornamchi","Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif}
+ html,body{font-family:var(--msu-font);font-synthesis:none}
+ button,input,select,textarea,optgroup,option{font-family:inherit}
+
  :root{--nv:#0369a1;--bl:#0ea5e9;--bl2:#38bdf8}
- body{font-family:'Sarabun',sans-serif;background:#f0f9ff;color:#0f172a}
+ body{font-family:var(--msu-font);background:#f0f9ff;color:#0f172a}
  .card{background:#fff;border:1px solid #dbeafe;border-radius:16px;box-shadow:0 1px 3px rgba(3,105,161,.08)}
  .navy{background:linear-gradient(135deg,#0284c7,#38bdf8)}.blue{background:linear-gradient(135deg,var(--bl),var(--bl2))}
  .pulse{animation:pl 2s infinite}@keyframes pl{0%,100%{opacity:1}50%{opacity:.35}}
@@ -31,7 +43,7 @@
  @media print{#coverBackdrop{display:none!important}}
  /* ── เนื้อในใบปะหน้า A4 ── */
  .a4{width:210mm;min-height:297mm;box-sizing:border-box;padding:13mm 12mm;background:#fff;
-  font-family:'Sarabun',sans-serif;color:#0f172a;position:relative}
+  font-family:var(--msu-font);color:#0f172a;position:relative}
  .a4 *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  @media print{.a4{width:auto;min-height:0;padding:0}}
  .a4head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#fff;border-radius:14px;
@@ -776,7 +788,15 @@ function docCardHTML(d, standalone){
     ['ความคืบหน้า',`${d.passed}/${STAGES.length} ขั้นตอน (${Math.round(d.passed/STAGES.length*100)}%)`],
     ['ขั้นตอนปัจจุบัน',d.where]);
   const infoKV=kvHTML(infoRows);
-  const fileUrl=safeUrl(d.file);
+  /* ช่องไฟล์ข้อมูลเก็บได้หลายไฟล์ (บรรทัดละ 1 ลิงก์) — แสดงปุ่มเปิดทุกไฟล์ */
+  const fileLines=String(d.file||'').split(/\r?\n|\s+\|\s+/).map(x=>x.trim()).filter(Boolean);
+  const fileUrls=fileLines.map(safeUrl).filter(Boolean);
+  const fileUrl=fileUrls[0]||'';
+  const fileName=u=>{ if(/drive\.google|docs\.google/i.test(u)) return 'ไฟล์ใน Google Drive';
+    try{ return decodeURIComponent(new URL(u).pathname.split('/').filter(Boolean).pop()||'')||u; }catch(e){ return u; } };
+  const moreFiles=fileUrls.length>1?`<div class="flex flex-col gap-1.5 noprint">${fileUrls.map((u,k)=>
+      `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}"
+        class="block text-xs bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 rounded-lg px-3 py-2 truncate">📄 ไฟล์ที่ ${k+1}: ${esc(fileName(u))}</a>`).join('')}</div>`:'';
   const slaKV=kvHTML([['มาตรฐานการเดินหนังสือ','ไม่เกิน '+d.sla+' วันทำการ (ไม่นับเสาร์-อาทิตย์และวันหยุดราชการ)'],
     ['ครบกำหนดวันที่',d.due?fmtDue(d.due):'-'],
     ['ระยะเวลาที่ใช้ไป',d.days===''?'-':d.days+' วันทำการ'],['คงเหลือ / เกินกำหนด',remainText(d)],
@@ -836,7 +856,7 @@ function docCardHTML(d, standalone){
     <div class="min-w-0 flex flex-col gap-4">
      ${fileUrl ? `<a href="${esc(fileUrl)}" target="_blank" rel="noopener"
        class="block text-center text-sm bg-sky-600 hover:bg-sky-700 text-white rounded-xl px-3 py-3 font-medium noprint">
-       📎 เปิดดูไฟล์เอกสารของเรื่องนี้<div class="text-[11px] font-normal opacity-90 mt-0.5">เปิดในแท็บใหม่</div></a>`
+       📎 เปิดดูไฟล์เอกสารของเรื่องนี้<div class="text-[11px] font-normal opacity-90 mt-0.5">${fileUrls.length>1?'มี '+fileUrls.length+' ไฟล์ · ไฟล์ที่ 1 เปิดในแท็บใหม่':'เปิดในแท็บใหม่'}</div></a>${moreFiles}`
       : (d.file ? `<div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
        📎 มีไฟล์เอกสารแนบไว้ แต่ลิงก์ที่บันทึกในชีตไม่ใช่ลิงก์เว็บที่เปิดได้: ${esc(d.file)}</div>` : '')}
 
@@ -1176,7 +1196,7 @@ function printLabel(no, sizeKey){
   const numPx=Math.max(7,Math.min(minSide*0.19,16));  // ขนาดตัวเลขที่หนังสือ ปรับตามขนาดสติกเกอร์
 
   labelSheet.innerHTML=`<div style="width:${sz.w}mm;height:${sz.h}mm;box-sizing:border-box;padding:1mm;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;font-family:'Sarabun',sans-serif;text-align:center;overflow:hidden">
+    align-items:center;justify-content:center;font-family:var(--msu-font);text-align:center;overflow:hidden">
     <div class="qrbox" id="qrLabelBox" style="line-height:0"></div>
     <div style="font-weight:700;font-family:monospace;font-size:${numPx}px;margin-top:0.8mm;white-space:nowrap;line-height:1.1">${esc(d.no)}</div></div>`;
 
