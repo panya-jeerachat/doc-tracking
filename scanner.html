@@ -4,11 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>DocTrack | สแกน QR เปลี่ยนสถานะหนังสือ</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- ฟอนต์ "มอน้ำชี" (Mornamchi) ฟอนต์ประจำมหาวิทยาลัยมหาสารคาม — ลิขสิทธิ์เฉพาะมหาวิทยาลัยมหาสารคาม
+     ไฟล์ฟอนต์เก็บอยู่บนเซิร์ฟเวอร์ของคณะ (eng.msu.ac.th) เท่านั้น หน้านี้แค่อ้างถึง ไม่ได้ฝังหรือคัดลอกไฟล์ฟอนต์ไว้ในหน้า
+     ห้ามนำไฟล์ฟอนต์ขึ้น GitHub หรือที่เก็บไฟล์สาธารณะ · โหลดไม่ได้ (เช่น อยู่นอกเครือข่าย) ระบบใช้ Sarabun แทนอัตโนมัติ -->
+<link rel="preconnect" href="https://eng.msu.ac.th" crossorigin>
+<link rel="preload" href="https://eng.msu.ac.th/documentstracking/fonts/mornamchi/Mornamchi-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="https://eng.msu.ac.th/documentstracking/fonts/mornamchi/Mornamchi-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="https://eng.msu.ac.th/documentstracking/fonts/mornamchi/mornamchi.css">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 <style>
+ /* ── ฟอนต์ประจำมหาวิทยาลัย: มอน้ำชี (มี 300 / 400 / 700 · 500 ใช้ Regular · 600 ใช้ Bold ตาม @font-face ของมหาวิทยาลัย) ── */
+ :root{--msu-font:"Mornamchi","Sarabun","Noto Sans Thai","Leelawadee UI",Tahoma,sans-serif}
+ html,body{font-family:var(--msu-font);font-synthesis:none}
+ button,input,select,textarea,optgroup,option{font-family:inherit}
+
  :root{--nv:#0f2d5c;--bl:#1d4ed8;--ok:#059669;--bad:#e11d48;--warn:#b45309;--line:#e5e9f2}
  *{box-sizing:border-box}
- body{margin:0;font-family:'Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+ body{margin:0;font-family:var(--msu-font);
       background:#f8fafc;color:#0f172a;-webkit-text-size-adjust:100%}
  header{background:var(--nv);color:#fff;padding:13px 16px;display:flex;align-items:center;gap:10px;
         position:sticky;top:0;z-index:10}
