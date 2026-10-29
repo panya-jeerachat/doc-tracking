@@ -115,7 +115,7 @@
    <div id="loginMsg" class="msg" style="text-align:left"></div>
 
    <!-- เข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัย (SSO) — แสดงเมื่อผู้ดูแลตั้งค่า CONFIG.SSO.URL ใน Code.gs แล้ว -->
-   <div id="ssoBox" style="display:none">
+   <div id="ssoBox">
     <button class="sso-btn" id="ssoBtn" onclick="ssoGo()"><span class="g">G</span><span>เข้าสู่ระบบด้วยบัญชี <b id="ssoDomain">@msu.ac.th</b></span></button>
     <a id="ssoChooser" href="#" style="display:block;font-size:12px;color:#94a3b8;margin-top:8px">บัญชีผิด / เข้าไม่ได้? เลือกบัญชี @msu.ac.th เอง</a>
     <div class="sso-or"><span>หรือใช้ชื่อผู้ใช้และรหัสผ่าน</span></div>
@@ -212,6 +212,9 @@
    แล้วจำไว้ในเครื่องนั้น ผู้ใช้จึงไม่ต้องรู้เรื่องนี้เลย */
 const CONFIG = {
   DEPLOY_ID: 'AKfycbzSXZ1AXKsEF47jlnoByZon50vKN5mMy2kwIJu2Tbd7sqmn9kPvFw7i0mh-TBnvcxs',
+  /* ★ Deployment สำหรับ SSO (เปิดเฉพาะบัญชี @msu.ac.th) — ปุ่ม "เข้าสู่ระบบด้วยบัญชี @msu.ac.th" ใช้ลิงก์นี้
+     แสดงปุ่มได้ทันทีโดยไม่ต้องรอถามเซิร์ฟเวอร์ (ถ้า Code.gs ตั้ง CONFIG.SSO.URL ไว้ต่างจากนี้ จะใช้ค่าจาก Code.gs) */
+  SSO_DEPLOY_ID: 'AKfycby-OATOjznwiZTCCaPVTCkZfLK_868jQYKAoWOHfcaX74gtigE0sH2EaUIaF0soopLq',
   GOOGLE_DOMAIN: 'msu.ac.th',
   PREFER: 'domain'        // 'domain' = ลองแบบระบุโดเมนก่อน · 'plain' = ลองแบบธรรมดาก่อน
 };
@@ -220,6 +223,7 @@ const execUrl = (id, dom) => dom
   : 'https://script.google.com/macros/s/' + id + '/exec';
 CONFIG.API_DOMAIN = execUrl(CONFIG.DEPLOY_ID, CONFIG.GOOGLE_DOMAIN);
 CONFIG.API_PLAIN  = execUrl(CONFIG.DEPLOY_ID, '');
+CONFIG.SSO_URL    = CONFIG.SSO_DEPLOY_ID ? execUrl(CONFIG.SSO_DEPLOY_ID, CONFIG.GOOGLE_DOMAIN) : '';
 CONFIG.API_URL    = (CONFIG.PREFER === 'domain' && CONFIG.GOOGLE_DOMAIN)
   ? CONFIG.API_DOMAIN : CONFIG.API_PLAIN;
 
@@ -373,22 +377,28 @@ function showLogin(){
 /* ══ 🔐 SSO: เข้าสู่ระบบด้วยบัญชี @msu.ac.th ══
    กดปุ่ม → ไปหน้ายืนยันตัวตนของมหาวิทยาลัย (Google) → กลับมาที่หน้านี้พร้อมรหัสใช้ครั้งเดียว (#sso=…)
    → แลกเป็นการเข้าสู่ระบบ ไม่ต้องพิมพ์รหัสผ่าน */
-let SSO_URL = '';
+let SSO_URL = CONFIG.SSO_URL;          /* ใช้ค่าในไฟล์ก่อน → ปุ่มขึ้นทันที ไม่ต้องรอเซิร์ฟเวอร์ */
+let SSO_ASKED = false;
+const ssoTarget = () => SSO_URL + (SSO_URL.indexOf('?') === -1 ? '?' : '&') + 'sso=scanner';
+function ssoRender(){
+  $('ssoBox').style.display = SSO_URL ? '' : 'none';
+  /* มือถือ/Chrome ที่ลงชื่อ Google หลายบัญชี → ให้เลือกบัญชีเองที่หน้าเลือกบัญชีของ Google แล้วไปต่อ */
+  if (SSO_URL) $('ssoChooser').href = 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(ssoTarget());
+}
 function ssoPrepare(){
-  if (SSO_URL) { $('ssoBox').style.display = ''; return; }
-  call('ssoInfo', []).then(i => {
-    SSO_URL = (i && i.url) || '';
+  ssoRender();
+  if (SSO_ASKED) return;
+  SSO_ASKED = true;
+  call('ssoInfo', []).then(i => {                 /* ถ้า Code.gs ตั้งลิงก์ SSO ไว้ต่างจากในไฟล์ ใช้ของ Code.gs */
+    if (i && i.url) SSO_URL = i.url;
     if (i && i.domain) $('ssoDomain').textContent = '@' + i.domain;
-    $('ssoBox').style.display = SSO_URL ? '' : 'none';
-    /* มือถือ/Chrome ที่ลงชื่อ Google หลายบัญชี → ให้เลือกบัญชีเองที่หน้าเลือกบัญชีของ Google แล้วไปต่อ */
-    if (SSO_URL) $('ssoChooser').href = 'https://accounts.google.com/AccountChooser?continue='
-      + encodeURIComponent(SSO_URL + (SSO_URL.indexOf('?') === -1 ? '?' : '&') + 'sso=scanner');
+    ssoRender();
   }).catch(() => {});
 }
 function ssoGo(){
   if (!SSO_URL) return;
   $('ssoBtn').disabled = true;
-  location.href = SSO_URL + (SSO_URL.indexOf('?') === -1 ? '?' : '&') + 'sso=scanner';
+  location.href = ssoTarget();
 }
 function ssoFromHash(){
   const m = /[#&]sso=([a-f0-9]{32,})/i.exec(location.hash || '');
@@ -401,7 +411,13 @@ function ssoFromHash(){
     msg.className = 'msg';
     TOKEN = res.token; store.set('doctrack_token', TOKEN);
     boot();
-  }).catch(e => { msg.className = 'msg show err'; msg.innerHTML = esc(e.message); });
+  }).catch(e => {
+    msg.className = 'msg show err';
+    msg.innerHTML = /ไม่อนุญาตให้เรียกใช้งาน/.test(e.message)
+      ? 'ระบบหลักยังเป็นรุ่นเก่าที่ยังไม่รองรับ SSO — ผู้ดูแลต้อง Deploy เวอร์ชันใหม่ให้ Deployment หลัก (ชุด Anyone) ด้วย'
+        + '<br><span style="font-size:12px">ระหว่างนี้เข้าด้วยชื่อผู้ใช้และรหัสผ่านได้ตามปกติ</span>'
+      : esc(e.message);
+  });
   return true;
 }
 function showApp(){
