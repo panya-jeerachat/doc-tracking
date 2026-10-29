@@ -86,6 +86,12 @@
  .hist .v{word-break:break-all}
  .diag{font-size:11.5px;color:#475569;line-height:1.9}
  .diag i{color:#94a3b8;font-style:normal;display:inline-block;width:46%}
+ .sso-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border-radius:12px;
+   border:1px solid #cbd5e1;background:#fff;font-weight:700;color:#0f172a;font-size:15.5px;margin-top:18px}
+ .sso-btn .g{width:24px;height:24px;border-radius:50%;background:conic-gradient(#ea4335 0 25%,#fbbc05 0 50%,#34a853 0 75%,#4285f4 0);
+   color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif}
+ .sso-or{display:flex;align-items:center;gap:10px;color:#94a3b8;font-size:12px;margin:16px 0 0}
+ .sso-or:before,.sso-or:after{content:"";flex:1;height:1px;background:#e2e8f0}
  .link{background:none;border:0;color:#64748b;font-size:12.5px;text-decoration:underline;
        padding:6px;width:auto;margin:0 auto;display:block}
  .foot{text-align:center;font-size:11px;color:#94a3b8;padding:4px 0 26px;line-height:1.7}
@@ -107,6 +113,13 @@
 
    <div id="setupMsg" class="msg" style="text-align:left"></div>
    <div id="loginMsg" class="msg" style="text-align:left"></div>
+
+   <!-- เข้าสู่ระบบด้วยบัญชี Google ของมหาวิทยาลัย (SSO) — แสดงเมื่อผู้ดูแลตั้งค่า CONFIG.SSO.URL ใน Code.gs แล้ว -->
+   <div id="ssoBox" style="display:none">
+    <button class="sso-btn" id="ssoBtn" onclick="ssoGo()"><span class="g">G</span><span>เข้าสู่ระบบด้วยบัญชี <b id="ssoDomain">@msu.ac.th</b></span></button>
+    <a id="ssoChooser" href="#" style="display:block;font-size:12px;color:#94a3b8;margin-top:8px">บัญชีผิด / เข้าไม่ได้? เลือกบัญชี @msu.ac.th เอง</a>
+    <div class="sso-or"><span>หรือใช้ชื่อผู้ใช้และรหัสผ่าน</span></div>
+   </div>
 
    <div style="text-align:left;margin-top:18px">
     <label>ชื่อผู้ใช้</label>
@@ -354,6 +367,42 @@ function postTo(url, fn, args){
 function showLogin(){
   $('loginView').classList.remove('hide');
   $('appView').classList.add('hide');
+  ssoPrepare();
+}
+
+/* ══ 🔐 SSO: เข้าสู่ระบบด้วยบัญชี @msu.ac.th ══
+   กดปุ่ม → ไปหน้ายืนยันตัวตนของมหาวิทยาลัย (Google) → กลับมาที่หน้านี้พร้อมรหัสใช้ครั้งเดียว (#sso=…)
+   → แลกเป็นการเข้าสู่ระบบ ไม่ต้องพิมพ์รหัสผ่าน */
+let SSO_URL = '';
+function ssoPrepare(){
+  if (SSO_URL) { $('ssoBox').style.display = ''; return; }
+  call('ssoInfo', []).then(i => {
+    SSO_URL = (i && i.url) || '';
+    if (i && i.domain) $('ssoDomain').textContent = '@' + i.domain;
+    $('ssoBox').style.display = SSO_URL ? '' : 'none';
+    /* มือถือ/Chrome ที่ลงชื่อ Google หลายบัญชี → ให้เลือกบัญชีเองที่หน้าเลือกบัญชีของ Google แล้วไปต่อ */
+    if (SSO_URL) $('ssoChooser').href = 'https://accounts.google.com/AccountChooser?continue='
+      + encodeURIComponent(SSO_URL + (SSO_URL.indexOf('?') === -1 ? '?' : '&') + 'sso=scanner');
+  }).catch(() => {});
+}
+function ssoGo(){
+  if (!SSO_URL) return;
+  $('ssoBtn').disabled = true;
+  location.href = SSO_URL + (SSO_URL.indexOf('?') === -1 ? '?' : '&') + 'sso=scanner';
+}
+function ssoFromHash(){
+  const m = /[#&]sso=([a-f0-9]{32,})/i.exec(location.hash || '');
+  if (!m) return false;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; }
+  const msg = $('loginMsg');
+  showLogin();
+  msg.className = 'msg show warn'; msg.innerHTML = '<span class="spin">⏳</span> กำลังเข้าสู่ระบบด้วยบัญชีมหาวิทยาลัย…';
+  call('ssoExchange', [m[1]]).then(res => {
+    msg.className = 'msg';
+    TOKEN = res.token; store.set('doctrack_token', TOKEN);
+    boot();
+  }).catch(e => { msg.className = 'msg show err'; msg.innerHTML = esc(e.message); });
+  return true;
 }
 function showApp(){
   $('loginView').classList.add('hide');
@@ -1081,7 +1130,7 @@ function readNoFromUrl(){
     $('loginBtn').disabled = true;
     return;
   }
-  if (TOKEN) boot(); else showLogin();
+  if (!ssoFromHash()) { if (TOKEN) boot(); else showLogin(); }
   loadLib().catch(() => {});   // โหลดไลบรารีล่วงหน้าเงียบ ๆ
 })();
 </script>
