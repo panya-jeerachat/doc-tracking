@@ -211,9 +211,11 @@
    PREFER คือแบบที่จะลองก่อน ถ้าลองแล้วติดต่อไม่ได้ ระบบจะสลับไปลองอีกแบบให้เองอัตโนมัติ
    แล้วจำไว้ในเครื่องนั้น ผู้ใช้จึงไม่ต้องรู้เรื่องนี้เลย */
 const CONFIG = {
+  /* ★ Deployment ปัจจุบันของระบบ (ใช้ทั้งเชื่อมฐานข้อมูลและปุ่ม "เข้าสู่ระบบด้วยบัญชี @msu.ac.th") */
   DEPLOY_ID: 'AKfycby-OATOjznwiZTCCaPVTCkZfLK_868jQYKAoWOHfcaX74gtigE0sH2EaUIaF0soopLq',
-  /* ★ Deployment สำหรับ SSO (เปิดเฉพาะบัญชี @msu.ac.th) — ปุ่ม "เข้าสู่ระบบด้วยบัญชี @msu.ac.th" ใช้ลิงก์นี้
-     แสดงปุ่มได้ทันทีโดยไม่ต้องรอถามเซิร์ฟเวอร์ (ถ้า Code.gs ตั้ง CONFIG.SSO.URL ไว้ต่างจากนี้ จะใช้ค่าจาก Code.gs) */
+  /* Deployment ชุดก่อนหน้า — เก็บไว้เป็นทางสำรองอัตโนมัติ ถ้าชุดปัจจุบันเชื่อมจากหน้านี้ไม่ได้
+     (เช่น ชุดปัจจุบันเปิดเฉพาะบัญชีมหาวิทยาลัย ซึ่งหน้าบน GitHub ดึงข้อมูลตรงไม่ได้) จะสลับไปใช้ชุดนี้ให้เอง */
+  DEPLOY_ID_FALLBACK: 'AKfycbzSXZ1AXKsEF47jlnoByZon50vKN5mMy2kwIJu2Tbd7sqmn9kPvFw7i0mh-TBnvcxs',
   SSO_DEPLOY_ID: 'AKfycby-OATOjznwiZTCCaPVTCkZfLK_868jQYKAoWOHfcaX74gtigE0sH2EaUIaF0soopLq',
   GOOGLE_DOMAIN: 'msu.ac.th',
   PREFER: 'domain'        // 'domain' = ลองแบบระบุโดเมนก่อน · 'plain' = ลองแบบธรรมดาก่อน
@@ -224,6 +226,10 @@ const execUrl = (id, dom) => dom
 CONFIG.API_DOMAIN = execUrl(CONFIG.DEPLOY_ID, CONFIG.GOOGLE_DOMAIN);
 CONFIG.API_PLAIN  = execUrl(CONFIG.DEPLOY_ID, '');
 CONFIG.SSO_URL    = CONFIG.SSO_DEPLOY_ID ? execUrl(CONFIG.SSO_DEPLOY_ID, CONFIG.GOOGLE_DOMAIN) : '';
+/* ลิงก์ทั้งหมดที่ลองเชื่อมได้ เรียงตามลำดับความสำคัญ — ชุดปัจจุบันก่อน แล้วค่อยชุดสำรอง */
+CONFIG.API_CANDIDATES = [...new Set([CONFIG.DEPLOY_ID, CONFIG.DEPLOY_ID_FALLBACK].filter(Boolean)
+  .flatMap(id => CONFIG.PREFER === 'domain' && CONFIG.GOOGLE_DOMAIN
+    ? [execUrl(id, CONFIG.GOOGLE_DOMAIN), execUrl(id, '')] : [execUrl(id, ''), execUrl(id, CONFIG.GOOGLE_DOMAIN)]))];
 CONFIG.API_URL    = (CONFIG.PREFER === 'domain' && CONFIG.GOOGLE_DOMAIN)
   ? CONFIG.API_DOMAIN : CONFIG.API_PLAIN;
 
@@ -242,7 +248,7 @@ const store = {
 let API = (function(){
   const saved = store.get('doctrack_api');
   const base  = store.get('doctrack_api_base');
-  if (saved && base === CONFIG.API_URL) return saved;   // ลิงก์ในไฟล์ยังเหมือนเดิม → ใช้ค่าที่ผู้ใช้ตั้งไว้
+  if (saved && base === CONFIG.API_URL && CONFIG.API_CANDIDATES.indexOf(saved) !== -1) return saved;   // ลิงก์ที่เคยใช้ได้ในเครื่องนี้
   store.del('doctrack_api'); store.del('doctrack_api_base');
   return CONFIG.API_URL;                                 // ลิงก์ในไฟล์เปลี่ยนแล้ว → ยึดตามไฟล์
 })();
@@ -307,26 +313,27 @@ function toast(text, kind){
    ส่งเป็น text/plain เพื่อไม่ให้เบราว์เซอร์ยิง preflight ซึ่ง Apps Script รับไม่ได้
    ========================================================================== */
 /* ลิงก์อีกแบบของ Deploy เดียวกัน — ใช้เป็นตัวสำรองเมื่อแบบที่ใช้อยู่ติดต่อไม่ได้ */
-function altApi(){
-  if (!CONFIG.GOOGLE_DOMAIN) return '';
-  const a = (API === CONFIG.API_DOMAIN) ? CONFIG.API_PLAIN : CONFIG.API_DOMAIN;
-  return a === API ? '' : a;
-}
+function altApi(){ return CONFIG.API_CANDIDATES.find(u => u !== API) || ''; }
 
 function call(fn, args){
   if (!API) return Promise.reject(new Error('ยังไม่ได้ตั้งค่าลิงก์เว็บแอปในไฟล์ scanner.html'));
   return postTo(API, fn, args).catch(err => {
-    const alt = altApi();
-    /* ล้มเพราะติดต่อไม่ได้/ถูกบังคับล็อกอินเท่านั้นจึงลองลิงก์สำรอง
+    /* ล้มเพราะติดต่อไม่ได้ / ถูกบังคับล็อกอิน / Deployment นั้นยังเป็นโค้ดรุ่นเก่า → ลองลิงก์อื่นตามลำดับ
        ถ้าเซิร์ฟเวอร์ตอบกลับมาว่ารหัสผ่านผิดหรือหมดสิทธิ์ ต้องไม่ลองซ้ำ */
-    if (!err || !err.canRetryOtherLink || !alt) throw err;
-    return postTo(alt, fn, args).then(data => {
-      API = alt;
-      store.set('doctrack_api', alt);
-      store.set('doctrack_api_base', CONFIG.API_URL);
-      try { toast('สลับไปใช้ลิงก์สำรองให้อัตโนมัติแล้ว', true); } catch (e) {}
-      return data;
-    }).catch(() => { throw err; });
+    if (!err || !err.canRetryOtherLink) throw err;
+    const others = CONFIG.API_CANDIDATES.filter(u => u !== API);
+    let chain = Promise.reject(err);
+    others.forEach(u => {
+      chain = chain.catch(e => {
+        if (e !== err && !e.canRetryOtherLink) throw e;
+        return postTo(u, fn, args).then(data => {
+          API = u;
+          store.set('doctrack_api', u); store.set('doctrack_api_base', CONFIG.API_URL);
+          return data;
+        });
+      });
+    });
+    return chain.catch(e => { throw (e && e.canRetryOtherLink) ? err : e; });
   });
 }
 
@@ -347,7 +354,12 @@ function postTo(url, fn, args){
       err.canRetryOtherLink = true;
       throw err;
     }
-    if (!res.ok) throw new Error(res.message || 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์');
+    if (!res.ok) {
+      const err = new Error(res.message || 'เกิดข้อผิดพลาดที่เซิร์ฟเวอร์');
+      /* Deployment ที่ยังเป็นโค้ดรุ่นเก่าไม่รู้จักคำสั่งใหม่ (เช่น SSO) → ให้ลองลิงก์อื่นได้ */
+      if (/ไม่อนุญาตให้เรียกใช้งาน/.test(err.message)) err.canRetryOtherLink = true;
+      throw err;
+    }
     return res.data;
   })
   .catch(e => {

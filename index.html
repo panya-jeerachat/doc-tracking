@@ -130,7 +130,10 @@ const GID      = '0';
    ลิงก์เว็บแอปมีสองรูปแบบที่ใช้ไอดีเดียวกัน ระบบสร้างให้เองทั้งคู่จากไอดีนี้
      · แบบธรรมดา      — ใช้ดึงข้อมูล (คนทั่วไปที่สแกน QR เข้ามาดูสถานะไม่ต้องล็อกอิน)
      · แบบระบุโดเมน   — ใช้กับปุ่มเข้าสู่ระบบผู้ดูแล ให้ Chrome เลือกบัญชี @msu.ac.th ถูกตั้งแต่แรก */
-const DEPLOY_ID = 'AKfycbzSXZ1AXKsEF47jlnoByZon50vKN5mMy2kwIJu2Tbd7sqmn9kPvFw7i0mh-TBnvcxs';
+/* Deployment ปัจจุบัน */
+const DEPLOY_ID = 'AKfycby-OATOjznwiZTCCaPVTCkZfLK_868jQYKAoWOHfcaX74gtigE0sH2EaUIaF0soopLq';
+/* Deployment ชุดก่อนหน้า — ทางสำรองอัตโนมัติสำหรับดึงข้อมูล (ถ้าชุดปัจจุบันเปิดเฉพาะบัญชีมหาวิทยาลัย หน้านี้จะสลับมาใช้ชุดนี้เอง) */
+const DEPLOY_ID_FALLBACK = 'AKfycbzSXZ1AXKsEF47jlnoByZon50vKN5mMy2kwIJu2Tbd7sqmn9kPvFw7i0mh-TBnvcxs';
 const GOOGLE_DOMAIN = 'msu.ac.th';
 const execUrl = (id, dom) => dom
   ? 'https://script.google.com/a/macros/' + dom + '/s/' + id + '/exec'
@@ -144,7 +147,7 @@ const ADMIN_LOGIN_URL = execUrl(DEPLOY_ID, GOOGLE_DOMAIN);
 /* ★ ลิงก์ SSO — Deployment ที่เปิดเฉพาะบัญชีมหาวิทยาลัย (Who has access: Anyone within มหาวิทยาลัยมหาสารคาม)
    เปิดแล้ว Google ยืนยันบัญชี @msu.ac.th และเข้าสู่ระบบผู้ดูแลให้ทันทีโดยไม่ต้องพิมพ์รหัสผ่าน
    (Deployment นี้คนละชุดกับ DEPLOY_ID ด้านบน — DEPLOY_ID ยังต้องใช้ดึงข้อมูลและหน้าสแกน ห้ามเปลี่ยนเป็นตัวนี้) */
-const SSO_DEPLOY_ID = 'AKfycby-OATOjznwiZTCCaPVTCkZfLK_868jQYKAoWOHfcaX74gtigE0sH2EaUIaF0soopLq';
+const SSO_DEPLOY_ID = DEPLOY_ID;
 const ADMIN_SSO_URL = execUrl(SSO_DEPLOY_ID, GOOGLE_DOMAIN);
 /* Chrome ที่ลงชื่อ Google ไว้หลายบัญชี: ผ่านหน้าเลือกบัญชีของ Google ก่อน แล้วไปต่อที่ลิงก์ SSO ด้วยบัญชีที่เลือก */
 const ADMIN_CHOOSER_URL = 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(ADMIN_SSO_URL);
@@ -937,7 +940,9 @@ const LAST_REASON={};
 
 /* เรียก ?page=api ของเว็บแอป — ถ้าลิงก์แบบธรรมดาถูกบังคับให้ล็อกอิน (Deploy แบบจำกัดเฉพาะคนในองค์กร)
    จะลองซ้ำด้วยลิงก์แบบระบุโดเมนให้อัตโนมัติ ผู้ใช้ในองค์กรจึงยังใช้งานได้โดยไม่ต้องแก้ไฟล์ */
-let API_BASE = ADMIN_URL;
+const API_CANDIDATES = [...new Set([DEPLOY_ID, DEPLOY_ID_FALLBACK].filter(Boolean)
+  .flatMap(id => [execUrl(id, ''), execUrl(id, GOOGLE_DOMAIN)]))];
+let API_BASE = API_CANDIDATES[0];
 async function apiGet(query){
   const tryUrl = async base => {
     const res = await fetch(base + '?' + query + '&_=' + Date.now());
@@ -948,12 +953,11 @@ async function apiGet(query){
   try{
     return await tryUrl(API_BASE);
   }catch(err){
-    const alt = API_BASE === ADMIN_URL ? ADMIN_LOGIN_URL : ADMIN_URL;
-    try{
-      const j = await tryUrl(alt);
-      API_BASE = alt;        /* ลิงก์สำรองใช้ได้ → ใช้อันนี้ต่อไปทั้งหน้า */
-      return j;
-    }catch(e2){ throw err; }
+    /* ลองลิงก์อื่นตามลำดับ (ชุดปัจจุบันแบบอื่น → ชุดสำรอง) ลิงก์ที่ใช้ได้จะใช้ต่อทั้งหน้า */
+    for (const alt of API_CANDIDATES.filter(u => u !== API_BASE)) {
+      try{ const j = await tryUrl(alt); API_BASE = alt; return j; }catch(e2){}
+    }
+    throw err;
   }
 }
 
